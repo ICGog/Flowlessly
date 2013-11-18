@@ -10,6 +10,10 @@ class MinCostFlow {
   }
 
  private:
+  void BellmanFord(Graph& graph, uint32_t source_node);
+  void DijkstraSimple(Graph& graph, uint32_t source_node);
+  void DijkstraOptimized(Graph& graph, uint32_t source_node);
+
   Graph graph_;
 
 };
