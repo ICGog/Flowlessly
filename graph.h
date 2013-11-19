@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <stdint.h>
+#include <vector>
 
 #include "arc.h"
 
@@ -16,11 +17,12 @@ class Graph {
   }
 
   ~Graph() {
-    delete [] node_supply;
-    delete [] arcs;
+    delete[] node_supply;
+    //    delete [] arcs;
   }
 
-  void readData(const string& graph_file);
+  void readGraph(const string& graph_file);
+  void writeGraph(const string& out_graph_file);
   uint32_t get_num_nodes();
   uint32_t get_num_arcs();
   map<uint32_t, Arc>* get_arcs();

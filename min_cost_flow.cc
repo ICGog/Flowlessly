@@ -9,22 +9,11 @@ using namespace std;
 
 typedef typename binomial_heap<pair<uint32_t, int32_t> >::handle_type handle_t;
 
-/*
-struct compare_distance {
-
-  bool operator()(const pair<uint32_t, int32_t>& d1,
-                  const pair<uint32_t, int32_t>& d2) {
-    return d1.second > d2.second;
-  }
-
-};
-*/
-
-void MinCostFlow::BellmanFord(Graph& graph, uint32_t source_node) {
-  uint32_t num_nodes = graph.get_num_nodes() + 1;
+void MinCostFlow::BellmanFord(uint32_t source_node) {
+  uint32_t num_nodes = graph_.get_num_nodes() + 1;
   int32_t distance[num_nodes];
   uint32_t predecessor[num_nodes];
-  map<uint32_t, Arc>* arcs = graph.get_arcs();
+  map<uint32_t, Arc>* arcs = graph_.get_arcs();
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
     if (node_id == source_node) {
       distance[node_id] = 0;
@@ -54,12 +43,12 @@ void MinCostFlow::BellmanFord(Graph& graph, uint32_t source_node) {
 
 }
 
-void MinCostFlow::DijkstraSimple(Graph& graph, uint32_t source_node) {
-  uint32_t num_nodes = graph.get_num_nodes() + 1;
+void MinCostFlow::DijkstraSimple(uint32_t source_node) {
+  uint32_t num_nodes = graph_.get_num_nodes() + 1;
   int32_t distance[num_nodes];
   uint32_t predecessor[num_nodes];
   bool node_used[num_nodes];
-  map<uint32_t, Arc>* arcs = graph.get_arcs();
+  map<uint32_t, Arc>* arcs = graph_.get_arcs();
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
     node_used[node_id] = false;
     if (node_id == source_node) {
@@ -91,11 +80,11 @@ void MinCostFlow::DijkstraSimple(Graph& graph, uint32_t source_node) {
 }
 
 
-void MinCostFlow::DijkstraOptimized(Graph& graph, uint32_t source_node) {
-  uint32_t num_nodes = graph.get_num_nodes() + 1;
+void MinCostFlow::DijkstraOptimized(uint32_t source_node) {
+  uint32_t num_nodes = graph_.get_num_nodes() + 1;
   int32_t distance[num_nodes];
   uint32_t predecessor[num_nodes];
-  map<uint32_t, Arc>* arcs = graph.get_arcs();
+  map<uint32_t, Arc>* arcs = graph_.get_arcs();
   binomial_heap<pair<uint32_t, int32_t> > dist_heap;
   handle_t handles[num_nodes];
   handles[source_node] = dist_heap.push(make_pair(0, source_node));
@@ -129,4 +118,25 @@ void MinCostFlow::DijkstraOptimized(Graph& graph, uint32_t source_node) {
       }
     }
   }
+}
+
+void MinCostFlow::CycleCancelling() {
+  //    Establish a feasible flow x in the network
+  //    while ( Gx contains a negative cycle ) do
+  //        identify a negative cycle W
+  //        mr = min(r(i,j)) where (i,j) is part of W
+  //        augment mr units of flow along the cycle W
+  //        update Gx
+}
+
+void MinCostFlow::SuccessiveShortestPath() {
+  //    Transform network G by adding source and sink
+  //    Initial flow x is zero
+  //    Use Bellman-Ford's algorithm to establish potentials PI
+  //    Reduce Cost ( PI )
+  //    while ( Gx contains a path from s to t ) do
+  //        Find any shortest path P from s to t
+  //        Reduce Cost ( PI )
+  //        Augment current flow x along P
+  //        update Gx
 }

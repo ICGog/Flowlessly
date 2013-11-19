@@ -5,6 +5,8 @@
 #include <gflags/gflags.h>
 
 DEFINE_string(graph_file, "graph.in", "File containing the input graph.");
+DEFINE_string(out_graph_file, "graph.out",
+              "File the output graph will be written");
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
@@ -26,7 +28,8 @@ int main(int argc, char *argv[]) {
   FLAGS_logtostderr = true;
   FLAGS_stderrthreshold = 0;
   Graph graph;
-  graph.readData(FLAGS_graph_file);
+  graph.readGraph(FLAGS_graph_file);
+  graph.writeGraph(FLAGS_out_graph_file);
   MinCostFlow min_cost_flow(graph);
   return 0;
 }

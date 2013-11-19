@@ -14,7 +14,7 @@ void Graph::allocateGraphMemory(uint32_t num_nodes, uint32_t num_arcs) {
   arcs = new map<uint32_t, Arc>[num_nodes + 1];
 }
 
-void Graph::readData(const string& graph_file_path) {
+void Graph::readGraph(const string& graph_file_path) {
   FILE* graph_file = NULL;
   if ((graph_file = fopen(graph_file_path.c_str(), "r")) == NULL) {
     LOG(ERROR) << "Failed to open graph file: " << graph_file_path;
@@ -39,8 +39,8 @@ void Graph::readData(const string& graph_file_path) {
         uint32_t node_id = lexical_cast<uint32_t>(vals[1]);
         node_supply[node_id] = lexical_cast<uint32_t>(vals[2]);
       } else if (vals[0].compare("p") == 0) {
-        num_nodes = lexical_cast<uint32_t>(vals[2]);
-        num_arcs = lexical_cast<uint32_t>(vals[3]);
+        num_nodes = lexical_cast<uint32_t>(vals[1]);
+        num_arcs = lexical_cast<uint32_t>(vals[2]);
         allocateGraphMemory(num_nodes, num_arcs);
       } else if (vals[0].compare("c") == 0) {
         // Comment line. Ignore it.
@@ -50,6 +50,27 @@ void Graph::readData(const string& graph_file_path) {
       }
     }
   }
+  fclose(graph_file);
+}
+
+void Graph::writeGraph(const string& out_graph_file) {
+  int32_t min_cost = 0;
+  FILE *graph_file = NULL;
+  if ((graph_file = fopen(out_graph_file.c_str(), "w")) == NULL) {
+    LOG(ERROR) << "Could no open graph file for writing: " << out_graph_file;
+  }
+  for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+    map<uint32_t, Arc>::iterator it = arcs[node_id].begin();
+    map<uint32_t, Arc>::iterator end_it = arcs[node_id].end();
+    for (; it != end_it; ++it) {
+      if (it->second.flow > 0) {
+        fprintf(graph_file, "f %u %u %d\n",
+                node_id, it->first, it->second.flow);
+      }
+      min_cost += it->second.flow * it->second.cost;
+    }
+  }
+  fprintf(graph_file, "s %d\n", min_cost);
   fclose(graph_file);
 }
 
