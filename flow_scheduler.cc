@@ -31,5 +31,11 @@ int main(int argc, char *argv[]) {
   graph.readGraph(FLAGS_graph_file);
   graph.writeGraph(FLAGS_out_graph_file);
   MinCostFlow min_cost_flow(graph);
+  LOG(INFO) << "------------ BellmanFord ------------";
+  min_cost_flow.BellmanFord(1);
+  LOG(INFO) << "------------ Dijkstra ------------";
+  min_cost_flow.DijkstraSimple(1);
+  LOG(INFO) << "------------ Dijkstra with heaps ------------";
+  min_cost_flow.DijkstraOptimized(1);
   return 0;
 }

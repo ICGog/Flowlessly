@@ -7,7 +7,13 @@
 using namespace boost::heap;
 using namespace std;
 
-typedef typename binomial_heap<pair<uint32_t, int32_t> >::handle_type handle_t;
+void MinCostFlow::printCosts(int32_t* distance, uint32_t* predecessor) {
+  uint32_t num_nodes = graph_.get_num_nodes() + 1;
+  for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
+    cout << node_id << " " << distance[node_id] << " "
+         << predecessor[node_id] << endl;
+  }
+}
 
 void MinCostFlow::BellmanFord(uint32_t source_node) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
@@ -29,7 +35,7 @@ void MinCostFlow::BellmanFord(uint32_t source_node) {
       map<uint32_t, Arc>::iterator end_it = arcs[node_id].end();
       for (; it != end_it; ++it) {
         if (it->second.cap - it->second.flow > 0 &&
-            distance[node_id] + it->second.cost < distance[it->first]) {
+            distance[node_id] + it->second.cost <= distance[it->first]) {
           distance[it->first] = distance[node_id] + it->second.cost;
           predecessor[it->first] = node_id;
           relaxed = true;
@@ -37,10 +43,10 @@ void MinCostFlow::BellmanFord(uint32_t source_node) {
       }
     }
     if (!relaxed) {
-      return;
+      break;
     }
   }
-
+  printCosts(distance, predecessor);
 }
 
 void MinCostFlow::DijkstraSimple(uint32_t source_node) {
@@ -77,6 +83,7 @@ void MinCostFlow::DijkstraSimple(uint32_t source_node) {
       }
     }
   }
+  printCosts(distance, predecessor);
 }
 
 
@@ -86,9 +93,10 @@ void MinCostFlow::DijkstraOptimized(uint32_t source_node) {
   uint32_t predecessor[num_nodes];
   map<uint32_t, Arc>* arcs = graph_.get_arcs();
   binomial_heap<pair<uint32_t, int32_t> > dist_heap;
-  handle_t handles[num_nodes];
+  binomial_heap<pair<uint32_t, int32_t> >::handle_type handles[num_nodes];
   handles[source_node] = dist_heap.push(make_pair(0, source_node));
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
+    predecessor[node_id] = 0;
     if (node_id == source_node) {
       distance[node_id] = 0;
     } else {
@@ -104,20 +112,21 @@ void MinCostFlow::DijkstraOptimized(uint32_t source_node) {
     map<uint32_t, Arc>::iterator end_it = arcs[min_node_id].end();
     for (; it != end_it; ++it) {
       if (it->second.cap - it->second.flow > 0 &&
-          distance[min_node_id] + it->second.cost < distance[it->first]) {
+          distance[min_node_id] + it->second.cost <= distance[it->first]) {
         distance[it->first] = distance[min_node_id] + it->second.cost;
         if (!predecessor[it->first]) {
           predecessor[it->first] = min_node_id;
-          dist_heap.increase(handles[it->first],
-                             make_pair(distance[it->first], it->first));
-        } else {
-          predecessor[it->first] = min_node_id;
           handles[it->first] =
             dist_heap.push(make_pair(distance[it->first], it->first));
+        } else {
+          predecessor[it->first] = min_node_id;
+          dist_heap.increase(handles[it->first],
+                             make_pair(distance[it->first], it->first));
         }
       }
     }
   }
+  printCosts(distance, predecessor);
 }
 
 void MinCostFlow::CycleCancelling() {

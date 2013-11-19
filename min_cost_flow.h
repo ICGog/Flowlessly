@@ -9,14 +9,16 @@ class MinCostFlow {
  MinCostFlow(Graph graph): graph_(graph) {
   }
 
- private:
   void CycleCancelling();
   void SuccessiveShortestPath();
   void BellmanFord(uint32_t source_node);
   void DijkstraSimple(uint32_t source_node);
   void DijkstraOptimized(uint32_t source_node);
 
+ private:
   Graph graph_;
+
+  void printCosts(int32_t* costs, uint32_t* predecessors);
 
 };
 #endif
