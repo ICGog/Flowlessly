@@ -19,7 +19,7 @@ class Graph {
   Graph(Graph& copy) {
     num_nodes = copy.get_num_nodes();
     num_arcs = copy.get_num_arcs();
-    node_supply = new uint32_t[num_nodes + 1];
+    node_supply = new int32_t[num_nodes + 1];
     std::copy(&copy.node_supply[0], &copy.node_supply[num_nodes + 1],
               node_supply);
     arcs = new map<uint32_t, Arc>[num_nodes + 1];
@@ -35,15 +35,20 @@ class Graph {
   void writeGraph(const string& out_graph_file);
   uint32_t get_num_nodes();
   uint32_t get_num_arcs();
+  int32_t* get_node_supply();
   map<uint32_t, Arc>* get_arcs();
+  vector<uint32_t> get_supply_nodes();
+  vector<uint32_t> get_demand_nodes();
 
  private:
   void allocateGraphMemory(uint32_t num_nodes, uint32_t num_arcs);
 
   uint32_t num_nodes;
   uint32_t num_arcs;
-  uint32_t* node_supply;
+  int32_t* node_supply;
   map<uint32_t, Arc>* arcs;
+  vector<uint32_t> supply_nodes;
+  vector<uint32_t> demand_nodes;
 
 };
 #endif
