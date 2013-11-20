@@ -10,7 +10,7 @@ using boost::lexical_cast;
 using boost::token_compress_on;
 
 void Graph::allocateGraphMemory(uint32_t num_nodes, uint32_t num_arcs) {
-  node_supply = new int32_t[num_nodes + 1];
+  nodes_supply = new int32_t[num_nodes + 1];
   arcs = new map<uint32_t, Arc>[num_nodes + 1];
 }
 
@@ -38,10 +38,10 @@ void Graph::readGraph(const string& graph_file_path) {
         arcs[dst_node][src_node] = Arc(0, -arc_min_flow, -arc_cost, true);
       } else if (vals[0].compare("n") == 0) {
         uint32_t node_id = lexical_cast<uint32_t>(vals[1]);
-        node_supply[node_id] = lexical_cast<int32_t>(vals[2]);
-        if (node_supply[node_id] > 0) {
+        nodes_supply[node_id] = lexical_cast<int32_t>(vals[2]);
+        if (nodes_supply[node_id] > 0) {
           supply_nodes.push_back(node_id);
-        } else if (node_supply[node_id] < 0) {
+        } else if (nodes_supply[node_id] < 0) {
           demand_nodes.push_back(node_id);
         }
       } else if (vals[0].compare("p") == 0) {
@@ -92,14 +92,14 @@ map<uint32_t, Arc>* Graph::get_arcs() {
   return arcs;
 }
 
-vector<uint32_t> Graph::get_supply_nodes() {
+const vector<uint32_t>& Graph::get_supply_nodes() {
   return supply_nodes;
 }
 
-vector<uint32_t> Graph::get_demand_nodes() {
+const vector<uint32_t>& Graph::get_demand_nodes() {
   return demand_nodes;
 }
 
-int32_t* Graph::get_node_supply() {
-  return node_supply;
+int32_t* Graph::get_nodes_supply() {
+  return nodes_supply;
 }

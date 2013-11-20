@@ -1,6 +1,8 @@
 #include "min_cost_flow.h"
 
 #include <boost/heap/binomial_heap.hpp>
+#include <glog/logging.h>
+#include <gflags/gflags.h>
 #include <limits>
 #include <queue>
 #include <stdint.h>
@@ -18,17 +20,12 @@ void MinCostFlow::printCosts(int32_t* distance, uint32_t* predecessor) {
 
 void MinCostFlow::BellmanFord(uint32_t source_node) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  int32_t distance[num_nodes];
-  uint32_t predecessor[num_nodes];
+  int32_t* distance = new int32_t[num_nodes];
+  uint32_t* predecessor = new uint32_t[num_nodes];
   map<uint32_t, Arc>* arcs = graph_.get_arcs();
-  for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
-    if (node_id == source_node) {
-      distance[node_id] = 0;
-    } else {
-      distance[node_id] = numeric_limits<int32_t>::max();
-    }
-  }
-
+  fill_n(distance, num_nodes, numeric_limits<int32_t>::max());
+  distance[source_node] = 0;
+  fill_n(predecessor, num_nodes, 0);
   for (uint32_t iter = 1; iter < num_nodes - 1; ++iter) {
     bool relaxed = false;
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
@@ -48,6 +45,11 @@ void MinCostFlow::BellmanFord(uint32_t source_node) {
     }
   }
   printCosts(distance, predecessor);
+  // TODO(ionel): Move this out. to the cycle cancelling method.
+  for (; removeNegativeCycles(distance, predecessor); ) {
+  }
+  delete[] distance;
+  delete[] predecessor;
 }
 
 void MinCostFlow::augmentFlow(int32_t* distance, uint32_t* predecessor,
@@ -94,18 +96,13 @@ bool MinCostFlow::removeNegativeCycles(int32_t* distance,
 
 void MinCostFlow::DijkstraSimple(uint32_t source_node) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  int32_t distance[num_nodes];
-  uint32_t predecessor[num_nodes];
-  bool node_used[num_nodes];
+  int32_t* distance = new int32_t[num_nodes];
+  uint32_t* predecessor = new uint32_t[num_nodes];
+  bool* node_used = new bool[num_nodes];
   map<uint32_t, Arc>* arcs = graph_.get_arcs();
-  for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
-    node_used[node_id] = false;
-    if (node_id == source_node) {
-      distance[node_id] = 0;
-    } else {
-      distance[node_id] = numeric_limits<int32_t>::max();
-    }
-  }
+  fill_n(distance, num_nodes, numeric_limits<int32_t>::max());
+  distance[source_node] = 0;
+  fill_n(node_used, num_nodes, false);
   for (uint32_t iter = 1; iter < num_nodes - 1; ++iter) {
     uint32_t min_node_distance = numeric_limits<int32_t>::max();
     uint32_t min_node_id = 0;
@@ -127,13 +124,16 @@ void MinCostFlow::DijkstraSimple(uint32_t source_node) {
     }
   }
   printCosts(distance, predecessor);
+  delete[] distance;
+  delete[] predecessor;
+  delete[] node_used;
 }
 
 
 void MinCostFlow::DijkstraOptimized(uint32_t source_node) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  int32_t distance[num_nodes];
-  uint32_t predecessor[num_nodes];
+  int32_t* distance = new int32_t[num_nodes];
+  uint32_t* predecessor = new uint32_t[num_nodes];
   map<uint32_t, Arc>* arcs = graph_.get_arcs();
   binomial_heap<pair<int32_t, uint32_t>,
                 compare<greater<pair<int32_t, uint32_t> > > > dist_heap;
@@ -141,14 +141,9 @@ void MinCostFlow::DijkstraOptimized(uint32_t source_node) {
                 compare<greater<pair<int32_t, uint32_t> > > >::handle_type
                 handles[num_nodes];
   handles[source_node] = dist_heap.push(make_pair(0, source_node));
-  for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
-    predecessor[node_id] = 0;
-    if (node_id == source_node) {
-      distance[node_id] = 0;
-    } else {
-      distance[node_id] = numeric_limits<int32_t>::max();
-    }
-  }
+  fill_n(distance, num_nodes, numeric_limits<int32_t>::max());
+  distance[source_node] = 0;
+  fill_n(predecessor, num_nodes, 0);
   while (!dist_heap.empty()) {
     pair<int32_t, uint32_t> min_dist = dist_heap.top();
     int32_t min_cost = min_dist.first;
@@ -173,21 +168,24 @@ void MinCostFlow::DijkstraOptimized(uint32_t source_node) {
     }
   }
   printCosts(distance, predecessor);
+  delete[] distance;
+  delete[] predecessor;
 }
 
 void MinCostFlow::maxFlow() {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   map<uint32_t, Arc>* arcs = graph_.get_arcs();
-  vector<uint32_t> supply_nodes = graph_.get_supply_nodes();
-  vector<uint32_t> demand_nodes = graph_.get_demand_nodes();
-  int32_t* node_supply = graph_.get_node_supply();
+  const vector<uint32_t> supply_nodes = graph_.get_supply_nodes();
+  int32_t* node_supply = graph_.get_nodes_supply();
+  int32_t* visited = new int32_t[num_nodes];
+  uint32_t* predecessor = new uint32_t[num_nodes];
   bool has_path = true;
   while (has_path) {
     has_path = false;
     queue<uint32_t> to_visit;
-    int32_t visited[num_nodes];
-    uint32_t predecessor[num_nodes];
-    for (vector<uint32_t>::iterator it = supply_nodes.begin();
+    fill_n(visited, num_nodes, 0);
+    fill_n(predecessor, num_nodes, 0);
+    for (vector<uint32_t>::const_iterator it = supply_nodes.begin();
          it != supply_nodes.end(); ++it) {
       to_visit.push(*it);
       visited[*it] = node_supply[*it];
@@ -204,6 +202,7 @@ void MinCostFlow::maxFlow() {
           to_visit.push(it->first);
           predecessor[it->first] = cur_node;
           if (node_supply[it->first] < 0) {
+            LOG(INFO) << "HAS PATH";
             has_path = true;
             int32_t min_aux_flow = visited[it->first];
             for (uint32_t cur_node = it->first; node_supply[cur_node] <= 0;
@@ -217,6 +216,8 @@ void MinCostFlow::maxFlow() {
       }
     }
   }
+  delete[] visited;
+  delete[] predecessor;
 }
 
 void MinCostFlow::cycleCancelling() {
@@ -227,8 +228,7 @@ void MinCostFlow::cycleCancelling() {
   //        augment mr units of flow along the cycle W
   //        update Gx
   maxFlow();
-  //  for (; removeNegativeCycles(distance, predecessor); ) {
-  //  }
+  BellmanFord(1);
 }
 
 void MinCostFlow::successiveShortestPath() {
