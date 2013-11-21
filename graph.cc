@@ -80,20 +80,22 @@ void Graph::writeGraph(const string& out_graph_file) {
   fclose(graph_file);
 }
 
-void Graph::printGraph() {
+void Graph::logGraph() {
   int32_t min_cost = 0;
+  LOG(INFO) << "src dst flow cap cost";
   for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
     map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
     map<uint32_t, Arc*>::iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
-      //      if (it->second->flow > 0) {
-      //        printf("f %u %u %d\n", node_id, it->first, it->second->flow);
-      //      }
-      printf("f %u %u %d %d %d\n", node_id, it->first, it->second->flow, it->second->cap, it->second->cost);
-      min_cost += it->second->flow * it->second->cost;
+      LOG(INFO) << "f " << node_id << " " << it->first << " "
+                << it->second->flow << " " << it->second->cap << " "
+                << it->second->cost;
+      if (it->second->flow > 0) {
+        min_cost += it->second->flow * it->second->cost;
+      }
     }
   }
-  printf("s %d\n", min_cost);
+  LOG(INFO) << "s " << min_cost;
 }
 
 uint32_t Graph::get_num_nodes() {

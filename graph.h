@@ -28,7 +28,7 @@ class Graph {
   }
 
   void readGraph(const string& graph_file);
-  void printGraph();
+  void logGraph();
   void writeGraph(const string& out_graph_file);
   uint32_t get_num_nodes();
   uint32_t get_num_arcs();

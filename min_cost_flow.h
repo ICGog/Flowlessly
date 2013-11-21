@@ -13,15 +13,19 @@ class MinCostFlow {
 
   void cycleCancelling();
   void successiveShortestPath();
-  void BellmanFord(const vector<uint32_t>& source_node);
-  void DijkstraSimple(const vector<uint32_t>& source_node);
-  void DijkstraOptimized(const vector<uint32_t>& source_node);
+  void BellmanFord(const vector<uint32_t>& source_node,
+                   vector<int32_t>& distance, vector<uint32_t>& predecessor);
+  void DijkstraSimple(const vector<uint32_t>& source_node,
+                      vector<int32_t>& distance, vector<uint32_t>& predecessor);
+  void DijkstraOptimized(const vector<uint32_t>& source_node,
+                         vector<int32_t>& distance,
+                         vector<uint32_t>& predecessor);
+  void logCosts(const vector<int32_t>& distance,
+                const vector<uint32_t>& predecessor);
 
  private:
   Graph graph_;
 
-  void printCosts(const vector<int32_t>& distance,
-                  const vector<uint32_t>& predecessor);
   // Returns true if it removes a negative cycle.
   bool removeNegativeCycles(vector<int32_t>& distance,
                             vector<uint32_t>& predecessor);

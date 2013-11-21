@@ -3,6 +3,7 @@
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <limits>
 
 DEFINE_string(graph_file, "graph.in", "File containing the input graph.");
 DEFINE_string(out_graph_file, "graph.out",
@@ -31,17 +32,31 @@ int main(int argc, char *argv[]) {
   FLAGS_stderrthreshold = 0;
   Graph graph;
   graph.readGraph(FLAGS_graph_file);
-  graph.printGraph();
+  graph.logGraph();
   MinCostFlow min_cost_flow(graph);
   if (!FLAGS_algorithm.compare("bellman_ford")) {
     LOG(INFO) << "------------ BellmanFord ------------";
-    min_cost_flow.BellmanFord(graph.get_supply_nodes());
+    uint32_t num_nodes = graph.get_num_nodes() + 1;
+    vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
+    vector<uint32_t> predecessor(num_nodes, 0);
+    min_cost_flow.BellmanFord(graph.get_supply_nodes(), distance, predecessor);
+    min_cost_flow.logCosts(distance, predecessor);
   } else if (!FLAGS_algorithm.compare("dijkstra")) {
     LOG(INFO) << "------------ Dijkstra ------------";
-    min_cost_flow.DijkstraSimple(graph.get_supply_nodes());
+    uint32_t num_nodes = graph.get_num_nodes() + 1;
+    vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
+    vector<uint32_t> predecessor(num_nodes, 0);
+    min_cost_flow.DijkstraSimple(graph.get_supply_nodes(), distance,
+                                 predecessor);
+    min_cost_flow.logCosts(distance, predecessor);
   } else if (!FLAGS_algorithm.compare("dijkstra_heap")) {
     LOG(INFO) << "------------ Dijkstra with heaps ------------";
-    min_cost_flow.DijkstraOptimized(graph.get_supply_nodes());
+    uint32_t num_nodes = graph.get_num_nodes() + 1;
+    vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
+    vector<uint32_t> predecessor(num_nodes, 0);
+    min_cost_flow.DijkstraOptimized(graph.get_supply_nodes(), distance,
+                                    predecessor);
+    min_cost_flow.logCosts(distance, predecessor);
   } else if (!FLAGS_algorithm.compare("cycle_cancelling")) {
     LOG(INFO) << "------------ Cycle cancelling min cost flow ------------";
     min_cost_flow.cycleCancelling();
