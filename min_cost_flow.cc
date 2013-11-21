@@ -261,6 +261,44 @@ void MinCostFlow::cycleCancelling() {
 void MinCostFlow::successiveShortestPath() {
   //    Transform network G by adding source and sink
   //    Initial flow x is zero
+  //        while ( Gx contains a path from s to t ) do
+  //        Find any shortest path P from s to t
+  //        Augment current flow x along P
+  //        update Gx
+  if (!graph_.hasSinkAndSource()) {
+    graph_.addSinkAndSource();
+  }
+  uint32_t num_nodes = graph_.get_num_nodes();
+  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
+  vector<uint32_t> predecessor(num_nodes, 0);
+  vector<uint32_t> source_node(1, graph_.get_source_id());
+  uint32_t sink_node = graph_.get_sink_id();
+  do {
+    fill(distance.begin(), distance.end(), numeric_limits<int32_t>::max());
+    fill(predecessor.begin(), predecessor.end(), 0);
+    BellmanFord(source_node, distance, predecessor);
+    if (distance[sink_node] < numeric_limits<int32_t>::max()) {
+      uint32_t min_flow = numeric_limits<int32_t>::max();
+      for (uint32_t cur_node = sink_node; cur_node != source_node[0];
+           cur_node = predecessor[cur_node]) {
+        Arc* arc = arcs[predecessor[cur_node]][cur_node];
+        if (arc->cap - arc->flow < min_flow) {
+          min_flow = arc->cap - arc->flow;
+        }
+      }
+      for (uint32_t cur_node = sink_node; cur_node != source_node[0];
+           cur_node = predecessor[cur_node]) {
+        arcs[predecessor[cur_node]][cur_node]->flow += min_flow;
+        arcs[cur_node][predecessor[cur_node]]->flow -= min_flow;
+      }
+    }
+  } while (distance[sink_node] < numeric_limits<int32_t>::max());
+}
+
+void MinCostFlow::successiveShortestPathPotentials() {
+  //    Transform network G by adding source and sink
+  //    Initial flow x is zero
   //    Use Bellman-Ford's algorithm to establish potentials PI
   //    Reduce Cost ( PI )
   //    while ( Gx contains a path from s to t ) do
@@ -268,4 +306,7 @@ void MinCostFlow::successiveShortestPath() {
   //        Reduce Cost ( PI )
   //        Augment current flow x along P
   //        update Gx
+  if (!graph_.hasSinkAndSource()) {
+    graph_.addSinkAndSource();
+  }
 }

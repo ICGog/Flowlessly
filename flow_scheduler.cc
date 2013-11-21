@@ -9,7 +9,7 @@ DEFINE_string(graph_file, "graph.in", "File containing the input graph.");
 DEFINE_string(out_graph_file, "graph.out",
               "File the output graph will be written");
 DEFINE_string(algorithm, "cycle_cancelling",
-              "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap");
+              "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path");
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
@@ -60,6 +60,14 @@ int main(int argc, char *argv[]) {
   } else if (!FLAGS_algorithm.compare("cycle_cancelling")) {
     LOG(INFO) << "------------ Cycle cancelling min cost flow ------------";
     min_cost_flow.cycleCancelling();
+  } else if (!FLAGS_algorithm.compare("successive_shortest_path")) {
+    LOG(INFO) << "------------ Successive shortest path min cost flow "
+              << "------------";
+    min_cost_flow.successiveShortestPath();
+  } else if (!FLAGS_algorithm.compare("successive_shortest_path_potentials")) {
+    LOG(INFO) << "------------ Successive shortest path with potential min"
+              << " cost flow ------------";
+    min_cost_flow.successiveShortestPathPotentials();
   } else {
     LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
   }

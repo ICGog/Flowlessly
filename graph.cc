@@ -45,8 +45,8 @@ void Graph::readGraph(const string& graph_file_path) {
           demand_nodes.push_back(node_id);
         }
       } else if (vals[0].compare("p") == 0) {
-        num_nodes = lexical_cast<uint32_t>(vals[1]);
-        num_arcs = lexical_cast<uint32_t>(vals[2]);
+        num_nodes = lexical_cast<uint32_t>(vals[2]);
+        num_arcs = lexical_cast<uint32_t>(vals[3]);
         allocateGraphMemory(num_nodes, num_arcs);
       } else if (vals[0].compare("c") == 0) {
         // Comment line. Ignore it.
@@ -72,8 +72,8 @@ void Graph::writeGraph(const string& out_graph_file) {
       if (it->second->flow > 0) {
         fprintf(graph_file, "f %u %u %d\n",
                 node_id, it->first, it->second->flow);
+        min_cost += it->second->flow * it->second->cost;
       }
-      min_cost += it->second->flow * it->second->cost;
     }
   }
   fprintf(graph_file, "s %d\n", min_cost);

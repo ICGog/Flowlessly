@@ -13,6 +13,7 @@ class MinCostFlow {
 
   void cycleCancelling();
   void successiveShortestPath();
+  void successiveShortestPathPotentials();
   void BellmanFord(const vector<uint32_t>& source_node,
                    vector<int32_t>& distance, vector<uint32_t>& predecessor);
   void DijkstraSimple(const vector<uint32_t>& source_node,
