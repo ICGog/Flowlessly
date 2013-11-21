@@ -3,6 +3,8 @@
 
 #include "graph.h"
 
+#include <boost/tuple/tuple.hpp>
+
 class MinCostFlow {
 
  public:
@@ -11,17 +13,19 @@ class MinCostFlow {
 
   void cycleCancelling();
   void successiveShortestPath();
-  void BellmanFord(uint32_t source_node);
-  void DijkstraSimple(uint32_t source_node);
-  void DijkstraOptimized(uint32_t source_node);
+  void BellmanFord(const vector<uint32_t>& source_node);
+  void DijkstraSimple(const vector<uint32_t>& source_node);
+  void DijkstraOptimized(const vector<uint32_t>& source_node);
 
  private:
   Graph graph_;
 
-  void printCosts(int32_t* costs, uint32_t* predecessors);
+  void printCosts(const vector<int32_t>& distance,
+                  const vector<uint32_t>& predecessor);
   // Returns true if it removes a negative cycle.
-  bool removeNegativeCycles(int32_t* distance, uint32_t* predecessor);
-  void augmentFlow(int32_t* distance, uint32_t* predecessor,
+  bool removeNegativeCycles(vector<int32_t>& distance,
+                            vector<uint32_t>& predecessor);
+  void augmentFlow(vector<int32_t>& distance, vector<uint32_t>& predecessor,
                    uint32_t src_node, uint32_t dst_node);
   void maxFlow();
 
