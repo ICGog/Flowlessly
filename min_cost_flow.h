@@ -14,6 +14,7 @@ class MinCostFlow {
   void cycleCancelling();
   void successiveShortestPath();
   void successiveShortestPathPotentials();
+  void costScaling();
   void BellmanFord(const vector<uint32_t>& source_node,
                    vector<int32_t>& distance, vector<uint32_t>& predecessor);
   void DijkstraSimple(const vector<uint32_t>& source_node,
@@ -33,6 +34,12 @@ class MinCostFlow {
   void augmentFlow(vector<int32_t>& distance, vector<uint32_t>& predecessor,
                    uint32_t src_node, uint32_t dst_node);
   void maxFlow();
+  void reduceCost(vector<int32_t>& potential);
+  void refine(vector<int32_t>& potentials);
+  void push(Arc* arc);
+  void relabel(vector<int32_t>& potentials, uint32_t node_id);
+  void discharge(uint32_t node_id);
+  //  void firstActive();
 
 };
 #endif
