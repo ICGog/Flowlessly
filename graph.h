@@ -20,10 +20,10 @@ class Graph {
   Graph(Graph& copy) {
     num_nodes = copy.num_nodes;
     num_arcs = copy.num_arcs;
-    nodes_descriptor = copy.nodes_descriptor;
+    nodes_demand = copy.nodes_demand;
     arcs = copy.arcs;
-    supply_nodes = copy.supply_nodes;
-    demand_nodes = copy.demand_nodes;
+    source_nodes = copy.source_nodes;
+    sink_nodes = copy.sink_nodes;
     added_sink_and_source = copy.added_sink_and_source;
   }
 
@@ -32,12 +32,10 @@ class Graph {
   void writeGraph(const string& out_graph_file);
   uint32_t get_num_nodes();
   uint32_t get_num_arcs();
-  const vector<int32_t>& get_nodes_descriptor() const;
+  const vector<int32_t>& get_nodes_demand() const;
   const vector<map<uint32_t, Arc*> >& get_arcs() const;
-  const vector<uint32_t>& get_supply_nodes() const;
-  const vector<uint32_t>& get_demand_nodes() const;
-  uint32_t get_source_id();
-  uint32_t get_sink_id();
+  const vector<uint32_t>& get_source_nodes() const;
+  const vector<uint32_t>& get_sink_nodes() const;
   bool hasSinkAndSource();
   void removeSinkAndSource();
   void addSinkAndSource();
@@ -47,10 +45,12 @@ class Graph {
 
   uint32_t num_nodes;
   uint32_t num_arcs;
-  vector<int32_t> nodes_descriptor;
+  vector<int32_t> nodes_demand;
   vector<map<uint32_t, Arc*> > arcs;
-  vector<uint32_t> supply_nodes;
-  vector<uint32_t> demand_nodes;
+  vector<uint32_t> source_nodes;
+  vector<uint32_t> sink_nodes;
+  vector<uint32_t> single_source_node;
+  vector<uint32_t> single_sink_node;
   bool added_sink_and_source;
 
 };

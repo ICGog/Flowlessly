@@ -39,14 +39,14 @@ int main(int argc, char *argv[]) {
     uint32_t num_nodes = graph.get_num_nodes() + 1;
     vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
-    min_cost_flow.BellmanFord(graph.get_supply_nodes(), distance, predecessor);
+    min_cost_flow.BellmanFord(graph.get_source_nodes(), distance, predecessor);
     min_cost_flow.logCosts(distance, predecessor);
   } else if (!FLAGS_algorithm.compare("dijkstra")) {
     LOG(INFO) << "------------ Dijkstra ------------";
     uint32_t num_nodes = graph.get_num_nodes() + 1;
     vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
-    min_cost_flow.DijkstraSimple(graph.get_supply_nodes(), distance,
+    min_cost_flow.DijkstraSimple(graph.get_source_nodes(), distance,
                                  predecessor);
     min_cost_flow.logCosts(distance, predecessor);
   } else if (!FLAGS_algorithm.compare("dijkstra_heap")) {
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     uint32_t num_nodes = graph.get_num_nodes() + 1;
     vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
-    min_cost_flow.DijkstraOptimized(graph.get_supply_nodes(), distance,
+    min_cost_flow.DijkstraOptimized(graph.get_source_nodes(), distance,
                                     predecessor);
     min_cost_flow.logCosts(distance, predecessor);
   } else if (!FLAGS_algorithm.compare("cycle_cancelling")) {

@@ -11,7 +11,7 @@ using boost::token_compress_on;
 
 void Graph::allocateGraphMemory(uint32_t num_nodes, uint32_t num_arcs) {
   arcs.resize(num_nodes + 1);
-  nodes_descriptor.resize(num_nodes + 1);
+  nodes_demand.resize(num_nodes + 1);
 }
 
 void Graph::readGraph(const string& graph_file_path) {
@@ -38,11 +38,11 @@ void Graph::readGraph(const string& graph_file_path) {
         arcs[dst_node][src_node] = new Arc(0, -arc_min_flow, -arc_cost, true);
       } else if (vals[0].compare("n") == 0) {
         uint32_t node_id = lexical_cast<uint32_t>(vals[1]);
-        nodes_descriptor[node_id] = lexical_cast<int32_t>(vals[2]);
-        if (nodes_descriptor[node_id] > 0) {
-          supply_nodes.push_back(node_id);
-        } else if (nodes_descriptor[node_id] < 0) {
-          demand_nodes.push_back(node_id);
+        nodes_demand[node_id] = lexical_cast<int32_t>(vals[2]);
+        if (nodes_demand[node_id] > 0) {
+          source_nodes.push_back(node_id);
+        } else if (nodes_demand[node_id] < 0) {
+          sink_nodes.push_back(node_id);
         }
       } else if (vals[0].compare("p") == 0) {
         num_nodes = lexical_cast<uint32_t>(vals[2]);
@@ -110,34 +110,24 @@ const vector<map<uint32_t, Arc*> >& Graph::get_arcs() const {
   return arcs;
 }
 
-const vector<uint32_t>& Graph::get_supply_nodes() const {
-  return supply_nodes;
-}
-
-const vector<uint32_t>& Graph::get_demand_nodes() const {
-  return demand_nodes;
-}
-
-const vector<int32_t>& Graph::get_nodes_descriptor() const {
-  return nodes_descriptor;
-}
-
-// Returns the source id if the graph has a source, otherwise 0.
-uint32_t Graph::get_source_id() {
+const vector<uint32_t>& Graph::get_source_nodes() const {
   if (added_sink_and_source) {
-    return num_nodes - 1;
+    return single_source_node;
   } else {
-    return 0;
+    return source_nodes;
   }
 }
 
-// Returns the sink id if the graph has a source, otherwise 0.
-uint32_t Graph::get_sink_id() {
+const vector<uint32_t>& Graph::get_sink_nodes() const {
   if (added_sink_and_source) {
-    return num_nodes;
+    return single_sink_node;
   } else {
-    return 0;
+    return sink_nodes;
   }
+}
+
+const vector<int32_t>& Graph::get_nodes_demand() const {
+  return nodes_demand;
 }
 
 bool Graph::hasSinkAndSource() {
@@ -148,20 +138,22 @@ void Graph::addSinkAndSource() {
   added_sink_and_source = true;
   num_nodes += 2;
   arcs.resize(num_nodes + 1);
-  nodes_descriptor.resize(num_nodes + 1);
-  for (vector<uint32_t>::iterator it = supply_nodes.begin();
-       it != supply_nodes.end(); ++it) {
+  nodes_demand.resize(num_nodes + 1);
+  single_source_node.push_back(num_nodes - 1);
+  single_sink_node.push_back(num_nodes);
+  for (vector<uint32_t>::iterator it = source_nodes.begin();
+       it != source_nodes.end(); ++it) {
     arcs[num_nodes - 1][*it] =
-      new Arc(nodes_descriptor[*it], 0, 0, false);
+      new Arc(nodes_demand[*it], 0, 0, false);
     arcs[*it][num_nodes - 1] = new Arc(0, 0, 0, true);
-    nodes_descriptor[num_nodes - 1] += nodes_descriptor[*it];
+    nodes_demand[num_nodes - 1] += nodes_demand[*it];
   }
-  for (vector<uint32_t>::iterator it = demand_nodes.begin();
-       it != demand_nodes.end(); ++it) {
+  for (vector<uint32_t>::iterator it = sink_nodes.begin();
+       it != sink_nodes.end(); ++it) {
     arcs[num_nodes][*it] = new Arc(0, 0, 0, true);
     arcs[*it][num_nodes] =
-      new Arc(-nodes_descriptor[*it], 0, 0, false);
-    nodes_descriptor[num_nodes] += nodes_descriptor[*it];
+      new Arc(-nodes_demand[*it], 0, 0, false);
+    nodes_demand[num_nodes] += nodes_demand[*it];
   }
 }
 
@@ -170,14 +162,16 @@ void Graph::removeSinkAndSource() {
   num_nodes -= 2;
   arcs.pop_back();
   arcs.pop_back();
-  nodes_descriptor.pop_back();
-  nodes_descriptor.pop_back();
-  for (vector<uint32_t>::iterator it = supply_nodes.begin();
-       it != supply_nodes.end(); ++it) {
+  nodes_demand.pop_back();
+  nodes_demand.pop_back();
+  single_source_node.pop_back();
+  single_sink_node.pop_back();
+  for (vector<uint32_t>::iterator it = source_nodes.begin();
+       it != source_nodes.end(); ++it) {
     arcs[*it].erase(num_nodes + 1);
   }
-  for (vector<uint32_t>::iterator it = demand_nodes.begin();
-       it != demand_nodes.end(); ++it) {
+  for (vector<uint32_t>::iterator it = sink_nodes.begin();
+       it != sink_nodes.end(); ++it) {
     arcs[*it].erase(num_nodes + 2);
   }
 }

@@ -184,11 +184,12 @@ void MinCostFlow::DijkstraOptimized(const vector<uint32_t>& source_nodes,
 void MinCostFlow::maxFlow() {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
-  vector<int32_t> nodes_descriptor = graph_.get_nodes_descriptor();
+  vector<int32_t> nodes_demand = graph_.get_nodes_demand();
   vector<int32_t> visited(num_nodes, 0);
   vector<uint32_t> predecessor(num_nodes, 0);
-  uint32_t source_node = graph_.get_source_id();
-  uint32_t sink_node = graph_.get_sink_id();
+  // Works with the assumption that there is only a sink and a source node.
+  uint32_t source_node = graph_.get_source_nodes()[0];
+  uint32_t sink_node = graph_.get_sink_nodes()[0];
   bool has_path = true;
   while (has_path) {
     has_path = false;
@@ -196,7 +197,7 @@ void MinCostFlow::maxFlow() {
     fill(visited.begin(), visited.end(), 0);
     fill(predecessor.begin(), predecessor.end(), 0);
     to_visit.push(source_node);
-    visited[source_node] = nodes_descriptor[source_node];
+    visited[source_node] = nodes_demand[source_node];
     while (!to_visit.empty() && !has_path) {
       uint32_t cur_node = to_visit.front();
       LOG(INFO) << "Max flow node popped: " << cur_node;
@@ -248,14 +249,14 @@ void MinCostFlow::cycleCancelling() {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
   vector<uint32_t> predecessor(num_nodes, 0);
-  BellmanFord(graph_.get_supply_nodes(), distance, predecessor);
+  BellmanFord(graph_.get_source_nodes(), distance, predecessor);
   logCosts(distance, predecessor);
   bool removed_cycle = removeNegativeCycles(distance, predecessor);
   graph_.logGraph();
   while (removed_cycle) {
     fill(distance.begin(), distance.end(), numeric_limits<int32_t>::max());
     fill(predecessor.begin(), predecessor.end(), 0);
-    BellmanFord(graph_.get_supply_nodes(), distance, predecessor);
+    BellmanFord(graph_.get_source_nodes(), distance, predecessor);
     logCosts(distance, predecessor);
     removed_cycle = removeNegativeCycles(distance, predecessor);
     graph_.logGraph();
@@ -276,8 +277,9 @@ void MinCostFlow::successiveShortestPath() {
   vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
   vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
   vector<uint32_t> predecessor(num_nodes, 0);
-  vector<uint32_t> source_node(1, graph_.get_source_id());
-  uint32_t sink_node = graph_.get_sink_id();
+  // Works with the assumption that there's only a sink and a source node.
+  vector<uint32_t> source_node = graph_.get_source_nodes();
+  uint32_t sink_node = graph_.get_sink_nodes()[0];
   do {
     fill(distance.begin(), distance.end(), numeric_limits<int32_t>::max());
     fill(predecessor.begin(), predecessor.end(), 0);
@@ -334,8 +336,9 @@ void MinCostFlow::successiveShortestPathPotentials() {
   vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
   vector<uint32_t> predecessor(num_nodes, 0);
   vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
-  vector<uint32_t> source_node(1, graph_.get_source_id());
-  uint32_t sink_node = graph_.get_sink_id();
+  // Works with the assumption that there's only a source and sink node.
+  vector<uint32_t> source_node = graph_.get_source_nodes();
+  uint32_t sink_node = graph_.get_sink_nodes()[0];
   BellmanFord(source_node, distance, predecessor);
   reduceCost(distance);
   uint32_t it_cnt = 0;
