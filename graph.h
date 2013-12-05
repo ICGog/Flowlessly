@@ -45,6 +45,8 @@ class Graph {
 
   uint32_t num_nodes;
   uint32_t num_arcs;
+  // nodes_demand has a positive value if the node is a supply node and a
+  // negative value if the node is a demand one.
   vector<int32_t> nodes_demand;
   vector<map<uint32_t, Arc*> > arcs;
   vector<uint32_t> source_nodes;

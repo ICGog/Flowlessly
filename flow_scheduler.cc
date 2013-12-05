@@ -10,6 +10,8 @@ DEFINE_string(out_graph_file, "graph.out",
               "File the output graph will be written");
 DEFINE_string(algorithm, "cycle_cancelling",
               "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path");
+DEFINE_int32(alpha_scaling_factor, 2,
+             "Value by which Eps is divided in the cost scaling algorithm");
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.

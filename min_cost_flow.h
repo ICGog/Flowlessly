@@ -4,6 +4,10 @@
 #include "graph.h"
 
 #include <boost/tuple/tuple.hpp>
+#include <glog/logging.h>
+#include <gflags/gflags.h>
+
+DECLARE_int32(alpha_scaling_factor);
 
 class MinCostFlow {
 
@@ -35,11 +39,10 @@ class MinCostFlow {
                    uint32_t src_node, uint32_t dst_node);
   void maxFlow();
   void reduceCost(vector<int32_t>& potential);
-  void refine(vector<int32_t>& potentials);
+  void refine(vector<int32_t>& potentials, int32_t eps);
   void push(Arc* arc);
-  void relabel(vector<int32_t>& potentials, uint32_t node_id);
-  void discharge(uint32_t node_id);
-  //  void firstActive();
+  void discharge(vector<int32_t>& potentials, uint32_t node_id, int32_t eps);
+  int32_t scaleUpCosts();
 
 };
 #endif

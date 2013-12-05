@@ -12,7 +12,7 @@ using namespace boost::heap;
 using namespace std;
 
 void MinCostFlow::logCosts(const vector<int32_t>& distance,
-                             const vector<uint32_t>& predecessor) {
+                           const vector<uint32_t>& predecessor) {
   LOG(INFO) << "Logging graph costs";
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
@@ -30,8 +30,9 @@ void MinCostFlow::BellmanFord(const vector<uint32_t>& source_nodes,
        it != source_nodes.end(); ++it) {
     distance[*it] = 0;
   }
-  for (uint32_t iter = 1; iter < num_nodes; ++iter) {
-    bool relaxed = false;
+  bool relaxed = true;
+  for (uint32_t iter = 1; iter < num_nodes && relaxed; ++iter) {
+    relaxed = false;
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
       if (distance[node_id] < numeric_limits<int32_t>::max()) {
         map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
@@ -46,9 +47,6 @@ void MinCostFlow::BellmanFord(const vector<uint32_t>& source_nodes,
         }
       }
     }
-    if (!relaxed) {
-      break;
-    }
   }
 }
 
@@ -62,9 +60,11 @@ void MinCostFlow::augmentFlow(vector<int32_t>& distance,
   vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
   int32_t min_flow = numeric_limits<int32_t>::max();
   uint32_t cur_node = src_node;
+  // Detect the node where the cycle ends.
   for (; !seen[cur_node];
        seen[cur_node] = true, cur_node = predecessor[cur_node]);
   dst_node = cur_node;
+  // Compute the minimum residual in the cycle.
   do {
     Arc* arc = arcs[predecessor[cur_node]][cur_node];
     if (arc->cap - arc->flow < min_flow) {
@@ -107,6 +107,8 @@ void MinCostFlow::DijkstraSimple(const vector<uint32_t>& source_nodes,
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<bool> node_used(num_nodes, false);
   vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  // Works with the assumption that all the elements of distance are
+  // already set to INF.
   for (vector<uint32_t>::const_iterator it = source_nodes.begin();
        it != source_nodes.end(); ++it) {
     distance[*it] = 0;
@@ -114,6 +116,7 @@ void MinCostFlow::DijkstraSimple(const vector<uint32_t>& source_nodes,
   for (uint32_t iter = 1; iter < num_nodes - 1; ++iter) {
     uint32_t min_node_distance = numeric_limits<int32_t>::max();
     uint32_t min_node_id = 0;
+    // Get the closest unused vertex.
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
       if (!node_used[node_id] && distance[node_id] <= min_node_distance) {
         min_node_distance = distance[node_id];
@@ -145,6 +148,8 @@ void MinCostFlow::DijkstraOptimized(const vector<uint32_t>& source_nodes,
   binomial_heap<pair<int32_t, uint32_t>,
                 compare<greater<pair<int32_t, uint32_t> > > >::handle_type
                 handles[num_nodes];
+  // Works with the assumption that all the elements of distance are
+  // already set to INF.
   for (vector<uint32_t>::const_iterator it = source_nodes.begin();
        it != source_nodes.end(); ++it) {
     distance[*it] = 0;
@@ -178,9 +183,9 @@ void MinCostFlow::DijkstraOptimized(const vector<uint32_t>& source_nodes,
   }
 }
 
-// Computes Max Flow over the graph using the Ford-Fulkerson algorithm.
+// Computes max flow over the graph using the Ford-Fulkerson algorithm.
 // The Complexity of the algorithm is O(E * F). Where F is the max flow value.
-// NOTE: This changes the graph.
+// NOTE: This method changes the graph.
 void MinCostFlow::maxFlow() {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
@@ -341,10 +346,10 @@ void MinCostFlow::successiveShortestPathPotentials() {
   uint32_t sink_node = graph_.get_sink_nodes()[0];
   BellmanFord(source_node, distance, predecessor);
   reduceCost(distance);
-  uint32_t it_cnt = 0;
+  uint32_t iteration_cnt = 0;
   do {
-    it_cnt++;
-    cout << "Iteration: " << it_cnt << endl;
+    iteration_cnt++;
+    cout << "Iteration: " << iteration_cnt << endl;
     fill(distance.begin(), distance.end(), numeric_limits<int32_t>::max());
     fill(predecessor.begin(), predecessor.end(), 0);
     graph_.logGraph();
@@ -371,50 +376,35 @@ void MinCostFlow::successiveShortestPathPotentials() {
 
 void MinCostFlow::push(Arc* arc) {
   // Excess flow.
-  // TODO(ionel): Compute excess flow.
   //  int32_t flow_to_send = min(excess_flow, arc->flow);
 }
 
-void MinCostFlow::relabel(vector<int32_t>& potentials, uint32_t node_id) {
+void MinCostFlow::discharge(vector<int32_t>& potentials, uint32_t node_id,
+                            int32_t eps) {
   vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
   map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
   map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
-  int32_t max_p_node = numeric_limits<int32_t>::min();
-  /*
+  // TODO(ionel): ONLY DISCHARGE ACTIVE VERTICES.
+  bool has_neg_cost_arc = false;
   for (; it != end_it; ++it) {
-    max_p_node = max(max_p_node,
-                     potentials[it->first] - it->second->cost - eps);
-  }
-  */
-  potentials[node_id] = max_p_node;
-}
-
-void MinCostFlow::discharge(uint32_t node_id) {
-}
-
-/*
-void MinCostFlow::firstActive() {
-  stack<uint32_t> active_stack;
-  uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
-    // Add the node to the stack if active.
-    if (excess_flow[node_id] > 0) {
-      active_stack.push(node_id);
+    if (it->second->cap + potentials[node_id] - potentials[it->first] < 0) {
+      has_neg_cost_arc = true;
+      if (it->second->cap - it->second->flow > 0) {
+        push(it->second);
+      }
     }
   }
-  while (!active_stack.empty()) {
-    bool relabeled = discharge(active_stack.top());
-    if (!relabeled) {
-      active_stack.pop();
-    }
+  if (!has_neg_cost_arc) {
+    // Relabel vertex.
+    potentials[node_id] -= eps;
   }
 }
-*/
 
-void MinCostFlow::refine(vector<int32_t>& potentials) {
+void MinCostFlow::refine(vector<int32_t>& potentials, int32_t eps) {
   // Saturate arcs with negative reduced cost.
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  // Saturate all the arcs with negative cost.
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
     map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
     map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
@@ -424,8 +414,30 @@ void MinCostFlow::refine(vector<int32_t>& potentials) {
       }
     }
   }
-
+  for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
+    discharge(potentials, node_id, eps);
+  }
 }
+
+// Scales up costs by alpha * num_nodes
+// It returns the maximum cost.
+int32_t MinCostFlow::scaleUpCosts() {
+  uint32_t num_nodes = graph_.get_num_nodes();
+  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  int32_t max_cost_arc = numeric_limits<int32_t>::min();
+  for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+    map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+    map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
+    for (; it != end_it; ++it) {
+      it->second->cost *= FLAGS_alpha_scaling_factor * num_nodes;
+      if (it->second->cost > max_cost_arc) {
+        max_cost_arc;
+      }
+    }
+  }
+  return max_cost_arc;
+}
+
 
 void MinCostFlow::costScaling() {
   //    eps = max arc cost
@@ -433,27 +445,16 @@ void MinCostFlow::costScaling() {
   //    Establish a feasible flow x in the network
   //    while eps >= 1/n do
   //      (e, f, p) = refine(e, f p)
-  int32_t alpha = 2;
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
   vector<int32_t> potentials(num_nodes, 0);
-  // Get max cost arc.
-  int32_t max_cost_arc = numeric_limits<int32_t>::min();
-  for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
-    map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
-    map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
-    for (; it != end_it; ++it) {
-      if (it->second->cost > max_cost_arc) {
-        max_cost_arc;
-      }
-    }
-  }
   if (!graph_.hasSinkAndSource()) {
     graph_.addSinkAndSource();
   }
   maxFlow();
   graph_.removeSinkAndSource();
-  for (uint32_t eps = max_cost_arc; eps >= 1; eps /= alpha) {
-    refine(potentials);
+  for (int32_t eps = scaleUpCosts() / FLAGS_alpha_scaling_factor; eps >= 1;
+       eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
+         1 : eps / FLAGS_alpha_scaling_factor) {
+    refine(potentials, eps);
   }
 }
