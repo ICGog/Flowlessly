@@ -32,10 +32,10 @@ class Graph {
   void writeGraph(const string& out_graph_file);
   uint32_t get_num_nodes();
   uint32_t get_num_arcs();
-  const vector<int32_t>& get_nodes_demand() const;
-  const vector<map<uint32_t, Arc*> >& get_arcs() const;
-  const vector<uint32_t>& get_source_nodes() const;
-  const vector<uint32_t>& get_sink_nodes() const;
+  vector<int32_t>& get_nodes_demand();
+  vector<map<uint32_t, Arc*> >& get_arcs();
+  vector<uint32_t>& get_source_nodes();
+  vector<uint32_t>& get_sink_nodes();
   bool hasSinkAndSource();
   void removeSinkAndSource();
   void addSinkAndSource();

@@ -25,7 +25,7 @@ void MinCostFlow::BellmanFord(const vector<uint32_t>& source_nodes,
                               vector<int32_t>& distance,
                               vector<uint32_t>& predecessor) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
   for (vector<uint32_t>::const_iterator it = source_nodes.begin();
        it != source_nodes.end(); ++it) {
     distance[*it] = 0;
@@ -57,7 +57,8 @@ void MinCostFlow::augmentFlow(vector<int32_t>& distance,
             << dst_node << ")";
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<bool> seen(num_nodes, false);
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
   int32_t min_flow = numeric_limits<int32_t>::max();
   uint32_t cur_node = src_node;
   // Detect the node where the cycle ends.
@@ -78,6 +79,8 @@ void MinCostFlow::augmentFlow(vector<int32_t>& distance,
   do {
     arcs[predecessor[cur_node]][cur_node]->flow += min_flow;
     arcs[cur_node][predecessor[cur_node]]->flow -= min_flow;
+    nodes_demand[predecessor[cur_node]] -= min_flow;
+    nodes_demand[cur_node] += min_flow;
     cur_node = predecessor[cur_node];
   } while (cur_node != dst_node);
 }
@@ -85,10 +88,10 @@ void MinCostFlow::augmentFlow(vector<int32_t>& distance,
 bool MinCostFlow::removeNegativeCycles(vector<int32_t>& distance,
                                        vector<uint32_t>& predecessor) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
-    map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
-    map<uint32_t, Arc*>::iterator end_it = arcs[node_id].end();
+    map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+    map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
       if (it->second->cap - it->second->flow > 0 &&
           distance[node_id] + it->second->cost < distance[it->first]) {
@@ -106,7 +109,7 @@ void MinCostFlow::DijkstraSimple(const vector<uint32_t>& source_nodes,
                                  vector<uint32_t>& predecessor) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<bool> node_used(num_nodes, false);
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
   // Works with the assumption that all the elements of distance are
   // already set to INF.
   for (vector<uint32_t>::const_iterator it = source_nodes.begin();
@@ -124,8 +127,8 @@ void MinCostFlow::DijkstraSimple(const vector<uint32_t>& source_nodes,
       }
     }
     node_used[min_node_id] = true;
-    map<uint32_t, Arc*>::iterator it = arcs[min_node_id].begin();
-    map<uint32_t, Arc*>::iterator end_it = arcs[min_node_id].end();
+    map<uint32_t, Arc*>::const_iterator it = arcs[min_node_id].begin();
+    map<uint32_t, Arc*>::const_iterator end_it = arcs[min_node_id].end();
     for (; it != end_it; ++it) {
       if (it->second->cap - it->second->flow > 0 &&
           distance[min_node_id] + it->second->cost < distance[it->first]) {
@@ -136,12 +139,11 @@ void MinCostFlow::DijkstraSimple(const vector<uint32_t>& source_nodes,
   }
 }
 
-
 void MinCostFlow::DijkstraOptimized(const vector<uint32_t>& source_nodes,
                                     vector<int32_t>& distance,
                                     vector<uint32_t>& predecessor) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
   vector<bool> visited(num_nodes, false);
   binomial_heap<pair<int32_t, uint32_t>,
                 compare<greater<pair<int32_t, uint32_t> > > > dist_heap;
@@ -162,8 +164,8 @@ void MinCostFlow::DijkstraOptimized(const vector<uint32_t>& source_nodes,
     uint32_t min_node_id = min_dist.second;
     LOG(INFO) << min_node_id;
     dist_heap.pop();
-    map<uint32_t, Arc*>::iterator it = arcs[min_node_id].begin();
-    map<uint32_t, Arc*>::iterator end_it = arcs[min_node_id].end();
+    map<uint32_t, Arc*>::const_iterator it = arcs[min_node_id].begin();
+    map<uint32_t, Arc*>::const_iterator end_it = arcs[min_node_id].end();
     for (; it != end_it; ++it) {
       if (it->second->cap - it->second->flow > 0 &&
           distance[min_node_id] + it->second->cost < distance[it->first]) {
@@ -188,8 +190,8 @@ void MinCostFlow::DijkstraOptimized(const vector<uint32_t>& source_nodes,
 // NOTE: This method changes the graph.
 void MinCostFlow::maxFlow() {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
-  vector<int32_t> nodes_demand = graph_.get_nodes_demand();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
   vector<int32_t> visited(num_nodes, 0);
   vector<uint32_t> predecessor(num_nodes, 0);
   // Works with the assumption that there is only a sink and a source node.
@@ -222,6 +224,8 @@ void MinCostFlow::maxFlow() {
                  cur_node = predecessor[cur_node]) {
               arcs[predecessor[cur_node]][cur_node]->flow += min_aux_flow;
               arcs[cur_node][predecessor[cur_node]]->flow -= min_aux_flow;
+              nodes_demand[predecessor[cur_node]] -= min_aux_flow;
+              nodes_demand[cur_node] += min_aux_flow;
               LOG(INFO) << "Flow path: (" << predecessor[cur_node] << ", "
                         << cur_node << ") " << min_aux_flow;
             }
@@ -279,7 +283,8 @@ void MinCostFlow::successiveShortestPath() {
     graph_.addSinkAndSource();
   }
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
   vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
   vector<uint32_t> predecessor(num_nodes, 0);
   // Works with the assumption that there's only a sink and a source node.
@@ -302,6 +307,8 @@ void MinCostFlow::successiveShortestPath() {
            cur_node = predecessor[cur_node]) {
         arcs[predecessor[cur_node]][cur_node]->flow += min_flow;
         arcs[cur_node][predecessor[cur_node]]->flow -= min_flow;
+        nodes_demand[predecessor[cur_node]] -= min_flow;
+        nodes_demand[cur_node] += min_flow;
       }
     }
   } while (distance[sink_node] < numeric_limits<int32_t>::max());
@@ -309,7 +316,7 @@ void MinCostFlow::successiveShortestPath() {
 
 void MinCostFlow::reduceCost(vector<int32_t>& potential) {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
     map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
     map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
@@ -340,9 +347,10 @@ void MinCostFlow::successiveShortestPathPotentials() {
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
   vector<uint32_t> predecessor(num_nodes, 0);
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
   // Works with the assumption that there's only a source and sink node.
-  vector<uint32_t> source_node = graph_.get_source_nodes();
+  vector<uint32_t>& source_node = graph_.get_source_nodes();
   uint32_t sink_node = graph_.get_sink_nodes()[0];
   BellmanFord(source_node, distance, predecessor);
   reduceCost(distance);
@@ -369,53 +377,80 @@ void MinCostFlow::successiveShortestPathPotentials() {
            cur_node = predecessor[cur_node]) {
         arcs[predecessor[cur_node]][cur_node]->flow += min_flow;
         arcs[cur_node][predecessor[cur_node]]->flow -= min_flow;
+        nodes_demand[predecessor[cur_node]] -= min_flow;
+        nodes_demand[cur_node] += min_flow;
       }
     }
   } while (distance[sink_node] < numeric_limits<int32_t>::max());
 }
 
-void MinCostFlow::push(Arc* arc) {
-  // Excess flow.
-  //  int32_t flow_to_send = min(excess_flow, arc->flow);
-}
-
-void MinCostFlow::discharge(vector<int32_t>& potentials, uint32_t node_id,
-                            int32_t eps) {
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
-  map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
-  map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
-  // TODO(ionel): ONLY DISCHARGE ACTIVE VERTICES.
-  bool has_neg_cost_arc = false;
-  for (; it != end_it; ++it) {
-    if (it->second->cap + potentials[node_id] - potentials[it->first] < 0) {
-      has_neg_cost_arc = true;
-      if (it->second->cap - it->second->flow > 0) {
-        push(it->second);
+void MinCostFlow::discharge(queue<uint32_t>& active_nodes,
+                            vector<int32_t>& potentials,
+                            vector<int32_t>& nodes_demand, int32_t eps) {
+  uint32_t node_id = active_nodes.front();
+  active_nodes.pop();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  while (nodes_demand[node_id] > 0) {
+    bool has_neg_cost_arc = false;
+    map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+    map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
+    for (; it != end_it; ++it) {
+      LOG(INFO) << "Cost: (" << node_id << ", " << it->first << "): "
+                << it->second->cost + potentials[node_id] - potentials[it->first];
+      if (it->second->cost + potentials[node_id] - potentials[it->first] < 0) {
+        if (it->second->cap - it->second->flow > 0) {
+          has_neg_cost_arc = true;
+          // Push flow.
+          int32_t min_flow = min(nodes_demand[node_id],
+                                 it->second->cap - it->second->flow);
+          LOG(INFO) << "Pushing flow " << min_flow << " on (" << node_id
+                    << ", " << it->first << ")";
+          it->second->flow += min_flow;
+          arcs[it->first][node_id]->flow -= min_flow;
+          nodes_demand[node_id] -= min_flow;
+          // If node doesn't have any excess then it will be activated.
+          if (nodes_demand[it->first] <= 0) {
+            active_nodes.push(it->first);
+          }
+          nodes_demand[it->first] += min_flow;
+        }
       }
     }
-  }
-  if (!has_neg_cost_arc) {
-    // Relabel vertex.
-    potentials[node_id] -= eps;
+    if (!has_neg_cost_arc) {
+      // Relabel vertex.
+      potentials[node_id] -= eps;
+      LOG(INFO) << "Potential of " << node_id << " : " << potentials[node_id];
+    }
   }
 }
 
 void MinCostFlow::refine(vector<int32_t>& potentials, int32_t eps) {
   // Saturate arcs with negative reduced cost.
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
   // Saturate all the arcs with negative cost.
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
     map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
     map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
-      if (it->second->cap + potentials[node_id] - potentials[it->first] < 0) {
+      if (it->second->cost + potentials[node_id] - potentials[it->first] < 0) {
+        nodes_demand[node_id] -= it->second->cap - it->second->flow;
+        nodes_demand[it->first] += it->second->cap - it->second->flow;
+        arcs[it->first][node_id]->flow -= it->second->cap - it->second->flow;
         it->second->flow = it->second->cap;
       }
     }
   }
+  graph_.logGraph();
+  queue<uint32_t> active_nodes;
   for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
-    discharge(potentials, node_id, eps);
+    if (nodes_demand[node_id] > 0) {
+      active_nodes.push(node_id);
+    }
+  }
+  while (!active_nodes.empty()) {
+    discharge(active_nodes, potentials, nodes_demand, eps);
   }
 }
 
@@ -423,7 +458,7 @@ void MinCostFlow::refine(vector<int32_t>& potentials, int32_t eps) {
 // It returns the maximum cost.
 int32_t MinCostFlow::scaleUpCosts() {
   uint32_t num_nodes = graph_.get_num_nodes();
-  vector<map<uint32_t, Arc*> > arcs = graph_.get_arcs();
+  const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
   int32_t max_cost_arc = numeric_limits<int32_t>::min();
   for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
     map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
@@ -431,13 +466,12 @@ int32_t MinCostFlow::scaleUpCosts() {
     for (; it != end_it; ++it) {
       it->second->cost *= FLAGS_alpha_scaling_factor * num_nodes;
       if (it->second->cost > max_cost_arc) {
-        max_cost_arc;
+        max_cost_arc = it->second->cost;
       }
     }
   }
   return max_cost_arc;
 }
-
 
 void MinCostFlow::costScaling() {
   //    eps = max arc cost
@@ -452,9 +486,11 @@ void MinCostFlow::costScaling() {
   }
   maxFlow();
   graph_.removeSinkAndSource();
+  graph_.logGraph();
   for (int32_t eps = scaleUpCosts() / FLAGS_alpha_scaling_factor; eps >= 1;
        eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
          1 : eps / FLAGS_alpha_scaling_factor) {
+    graph_.logGraph();
     refine(potentials, eps);
   }
 }

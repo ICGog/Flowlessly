@@ -6,6 +6,9 @@
 #include <boost/tuple/tuple.hpp>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <queue>
+
+using namespace std;
 
 DECLARE_int32(alpha_scaling_factor);
 
@@ -40,8 +43,8 @@ class MinCostFlow {
   void maxFlow();
   void reduceCost(vector<int32_t>& potential);
   void refine(vector<int32_t>& potentials, int32_t eps);
-  void push(Arc* arc);
-  void discharge(vector<int32_t>& potentials, uint32_t node_id, int32_t eps);
+  void discharge(queue<uint32_t>& active_nodes, vector<int32_t>& potentials,
+                 vector<int32_t>& nodes_demand, int32_t eps);
   int32_t scaleUpCosts();
 
 };

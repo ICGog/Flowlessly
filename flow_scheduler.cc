@@ -9,7 +9,7 @@ DEFINE_string(graph_file, "graph.in", "File containing the input graph.");
 DEFINE_string(out_graph_file, "graph.out",
               "File the output graph will be written");
 DEFINE_string(algorithm, "cycle_cancelling",
-              "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path");
+              "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path, cost_scaling");
 DEFINE_int32(alpha_scaling_factor, 2,
              "Value by which Eps is divided in the cost scaling algorithm");
 
@@ -70,6 +70,9 @@ int main(int argc, char *argv[]) {
     LOG(INFO) << "------------ Successive shortest path with potential min"
               << " cost flow ------------";
     min_cost_flow.successiveShortestPathPotentials();
+  } else if (!FLAGS_algorithm.compare("cost_scaling")) {
+    LOG(INFO) << "------------ Cost scaling min cost flow ------------";
+    min_cost_flow.costScaling();
   } else {
     LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
   }

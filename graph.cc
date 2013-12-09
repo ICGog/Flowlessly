@@ -106,11 +106,11 @@ uint32_t Graph::get_num_arcs() {
   return num_arcs;
 }
 
-const vector<map<uint32_t, Arc*> >& Graph::get_arcs() const {
+vector<map<uint32_t, Arc*> >& Graph::get_arcs() {
   return arcs;
 }
 
-const vector<uint32_t>& Graph::get_source_nodes() const {
+vector<uint32_t>& Graph::get_source_nodes() {
   if (added_sink_and_source) {
     return single_source_node;
   } else {
@@ -118,7 +118,7 @@ const vector<uint32_t>& Graph::get_source_nodes() const {
   }
 }
 
-const vector<uint32_t>& Graph::get_sink_nodes() const {
+vector<uint32_t>& Graph::get_sink_nodes() {
   if (added_sink_and_source) {
     return single_sink_node;
   } else {
@@ -126,7 +126,7 @@ const vector<uint32_t>& Graph::get_sink_nodes() const {
   }
 }
 
-const vector<int32_t>& Graph::get_nodes_demand() const {
+vector<int32_t>& Graph::get_nodes_demand() {
   return nodes_demand;
 }
 
@@ -147,6 +147,7 @@ void Graph::addSinkAndSource() {
       new Arc(nodes_demand[*it], 0, 0, false);
     arcs[*it][num_nodes - 1] = new Arc(0, 0, 0, true);
     nodes_demand[num_nodes - 1] += nodes_demand[*it];
+    nodes_demand[*it] = 0;
   }
   for (vector<uint32_t>::iterator it = sink_nodes.begin();
        it != sink_nodes.end(); ++it) {
@@ -154,10 +155,26 @@ void Graph::addSinkAndSource() {
     arcs[*it][num_nodes] =
       new Arc(-nodes_demand[*it], 0, 0, false);
     nodes_demand[num_nodes] += nodes_demand[*it];
+    nodes_demand[*it] = 0;
   }
 }
 
 void Graph::removeSinkAndSource() {
+  map<uint32_t, Arc*>::iterator it = arcs[num_nodes - 1].begin();
+  map<uint32_t, Arc*>::iterator end_it = arcs[num_nodes - 1].end();
+  for (; it != end_it; ++it) {
+    nodes_demand[it->first] += it->second->cap - it->second->flow;
+  }
+  for (vector<uint32_t>::iterator it = source_nodes.begin();
+       it != source_nodes.end(); ++it) {
+    arcs[*it].erase(num_nodes - 1);
+  }
+  for (vector<uint32_t>::iterator it = sink_nodes.begin();
+       it != sink_nodes.end(); ++it) {
+    Arc* arc = arcs[*it][num_nodes];
+    nodes_demand[*it] = -(arc->cap - arc->flow);
+    arcs[*it].erase(num_nodes);
+  }
   added_sink_and_source = false;
   num_nodes -= 2;
   arcs.pop_back();
@@ -166,12 +183,4 @@ void Graph::removeSinkAndSource() {
   nodes_demand.pop_back();
   single_source_node.pop_back();
   single_sink_node.pop_back();
-  for (vector<uint32_t>::iterator it = source_nodes.begin();
-       it != source_nodes.end(); ++it) {
-    arcs[*it].erase(num_nodes + 1);
-  }
-  for (vector<uint32_t>::iterator it = sink_nodes.begin();
-       it != sink_nodes.end(); ++it) {
-    arcs[*it].erase(num_nodes + 2);
-  }
 }
