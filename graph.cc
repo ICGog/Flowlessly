@@ -34,9 +34,11 @@ void Graph::readGraph(const string& graph_file_path) {
         int32_t arc_min_flow = lexical_cast<uint32_t>(vals[3]);
         uint32_t arc_capacity = lexical_cast<uint32_t>(vals[4]);
         int32_t arc_cost = lexical_cast<uint32_t>(vals[5]);
-        arcs[src_node][dst_node] =
-          new Arc(arc_capacity, arc_min_flow, arc_cost, false);
-        arcs[dst_node][src_node] = new Arc(0, -arc_min_flow, -arc_cost, true);
+        Arc* arc = new Arc(arc_capacity, arc_min_flow, arc_cost, NULL);
+        Arc* reverse_arc = new Arc(0, -arc_min_flow, -arc_cost, arc);
+        arc->set_reverse_arc(reverse_arc);
+        arcs[src_node][dst_node] = arc;
+        arcs[dst_node][src_node] = reverse_arc;
       } else if (vals[0].compare("n") == 0) {
         uint32_t node_id = lexical_cast<uint32_t>(vals[1]);
         nodes_demand[node_id] = lexical_cast<int32_t>(vals[2]);
@@ -144,17 +146,21 @@ void Graph::addSinkAndSource() {
   single_sink_node.push_back(num_nodes);
   for (vector<uint32_t>::iterator it = source_nodes.begin();
        it != source_nodes.end(); ++it) {
-    arcs[num_nodes - 1][*it] =
-      new Arc(nodes_demand[*it], 0, 0, false);
-    arcs[*it][num_nodes - 1] = new Arc(0, 0, 0, true);
+    Arc* arc = new Arc(nodes_demand[*it], 0, 0, NULL);
+    Arc* reverse_arc = new Arc(0, 0, 0, arc);
+    arc->set_reverse_arc(reverse_arc);
+    arcs[num_nodes - 1][*it] = arc;
+    arcs[*it][num_nodes - 1] = reverse_arc;
     nodes_demand[num_nodes - 1] += nodes_demand[*it];
     nodes_demand[*it] = 0;
   }
   for (vector<uint32_t>::iterator it = sink_nodes.begin();
        it != sink_nodes.end(); ++it) {
-    arcs[num_nodes][*it] = new Arc(0, 0, 0, true);
-    arcs[*it][num_nodes] =
-      new Arc(-nodes_demand[*it], 0, 0, false);
+    Arc* arc = new Arc(0, 0, 0, NULL);
+    Arc* reverse_arc = new Arc(-nodes_demand[*it], 0, 0, arc);
+    arc->set_reverse_arc(reverse_arc);
+    arcs[num_nodes][*it] = arc;
+    arcs[*it][num_nodes] = reverse_arc;
     nodes_demand[num_nodes] += nodes_demand[*it];
     nodes_demand[*it] = 0;
   }

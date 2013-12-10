@@ -12,6 +12,10 @@ int32_t Arc::get_cost() {
   return cost;
 }
 
-bool Arc::get_reverse() {
-  return reverse;
+Arc* Arc::get_reverse_arc() {
+  return reverse_arc;
+}
+
+void Arc::set_reverse_arc(Arc* arc) {
+  reverse_arc = arc;
 }

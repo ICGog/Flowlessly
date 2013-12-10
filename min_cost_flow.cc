@@ -77,8 +77,9 @@ void MinCostFlow::augmentFlow(vector<int32_t>& distance,
   } while (cur_node != dst_node);
   LOG(INFO) << "Augmenting negative cycle with flow: " << min_flow;
   do {
-    arcs[predecessor[cur_node]][cur_node]->flow += min_flow;
-    arcs[cur_node][predecessor[cur_node]]->flow -= min_flow;
+    Arc* arc = arcs[predecessor[cur_node]][cur_node];
+    arc->flow += min_flow;
+    arc->reverse_arc->flow -= min_flow;
     nodes_demand[predecessor[cur_node]] -= min_flow;
     nodes_demand[cur_node] += min_flow;
     cur_node = predecessor[cur_node];
@@ -222,8 +223,9 @@ void MinCostFlow::maxFlow() {
             int32_t min_aux_flow = visited[it->first];
             for (uint32_t cur_node = it->first; predecessor[cur_node] > 0;
                  cur_node = predecessor[cur_node]) {
-              arcs[predecessor[cur_node]][cur_node]->flow += min_aux_flow;
-              arcs[cur_node][predecessor[cur_node]]->flow -= min_aux_flow;
+              Arc* arc = arcs[predecessor[cur_node]][cur_node];
+              arc->flow += min_aux_flow;
+              arc->reverse_arc->flow -= min_aux_flow;
               nodes_demand[predecessor[cur_node]] -= min_aux_flow;
               nodes_demand[cur_node] += min_aux_flow;
               LOG(INFO) << "Flow path: (" << predecessor[cur_node] << ", "
@@ -305,8 +307,9 @@ void MinCostFlow::successiveShortestPath() {
       }
       for (uint32_t cur_node = sink_node; cur_node != source_node[0];
            cur_node = predecessor[cur_node]) {
-        arcs[predecessor[cur_node]][cur_node]->flow += min_flow;
-        arcs[cur_node][predecessor[cur_node]]->flow -= min_flow;
+        Arc* arc = arcs[predecessor[cur_node]][cur_node];
+        arc->flow += min_flow;
+        arc->reverse_arc->flow -= min_flow;
         nodes_demand[predecessor[cur_node]] -= min_flow;
         nodes_demand[cur_node] += min_flow;
       }
@@ -375,8 +378,9 @@ void MinCostFlow::successiveShortestPathPotentials() {
       }
       for (uint32_t cur_node = sink_node; cur_node != source_node[0];
            cur_node = predecessor[cur_node]) {
-        arcs[predecessor[cur_node]][cur_node]->flow += min_flow;
-        arcs[cur_node][predecessor[cur_node]]->flow -= min_flow;
+        Arc* arc = arcs[predecessor[cur_node]][cur_node];
+        arc->flow += min_flow;
+        arc->reverse_arc->flow -= min_flow;
         nodes_demand[predecessor[cur_node]] -= min_flow;
         nodes_demand[cur_node] += min_flow;
       }
@@ -401,6 +405,7 @@ void MinCostFlow::discharge(queue<uint32_t>& active_nodes,
         if (it->second->cap - it->second->flow > 0) {
           has_neg_cost_arc = true;
           // Push flow.
+          pushes_cnt++;
           int32_t min_flow = min(nodes_demand[node_id],
                                  it->second->cap - it->second->flow);
           LOG(INFO) << "Pushing flow " << min_flow << " on (" << node_id
@@ -418,6 +423,7 @@ void MinCostFlow::discharge(queue<uint32_t>& active_nodes,
     }
     if (!has_neg_cost_arc) {
       // Relabel vertex.
+      relabel_cnt++;
       potentials[node_id] -= eps;
       LOG(INFO) << "Potential of " << node_id << " : " << potentials[node_id];
     }
@@ -487,46 +493,112 @@ void MinCostFlow::costScaling() {
   maxFlow();
   graph_.removeSinkAndSource();
   graph_.logGraph();
+  relabel_cnt = 0;
+  pushes_cnt = 0;
   for (int32_t eps = scaleUpCosts() / FLAGS_alpha_scaling_factor; eps >= 1;
        eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
          1 : eps / FLAGS_alpha_scaling_factor) {
     graph_.logGraph();
     refine(potentials, eps);
   }
+  LOG(ERROR) << "Num relables: " << relabel_cnt;
+  LOG(ERROR) << "Num pushes: " << pushes_cnt;
 }
 
-void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potentials,
+void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potential,
                                          int32_t eps) {
   uint32_t num_nodes = graph_.get_num_nodes();
-  vector<bool> scanned(num_nodes + 1, false);
-  vector<uint32_t> label(num_nodes + 1, 0);
-  vector<queue<uint32_t> > bucket((num_nodes + 1) * FLAGS_alpha_scaling_factor);
+  // Variable used to denote an empty bucket.
+  uint32_t max_rank = FLAGS_alpha_scaling_factor * num_nodes;
+  uint32_t bucket_end = num_nodes + 1;
+  vector<int32_t> rank(num_nodes + 1, 0);
+  vector<uint32_t> bucket(max_rank + 1, 0);
+  vector<uint32_t> bucket_prev(num_nodes + 1, 0);
+  vector<uint32_t> bucket_next(num_nodes + 1, 0);
   vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
   vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  uint32_t num_active_nodes = 0;
+  // Initialize buckets.
+  for (uint32_t cur_rank = 0; cur_rank < max_rank; ++cur_rank) {
+    bucket[cur_rank] = bucket_end;
+  }
+  // Put nodes with negative excess in bucket[0].
   for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
     if (nodes_demand[node_id] < 0) {
-      bucket[0].push(node_id);
+      rank[node_id] = 0;
+      bucket_next[node_id] = bucket[0];
+      bucket_prev[bucket[0]] = node_id;
+      bucket[0] = node_id;
+    } else {
+      rank[node_id] = max_rank;
+      if (nodes_demand[node_id] > 0) {
+        num_active_nodes++;
+      }
     }
   }
-  for (uint32_t bucket_index = 0; ; ++bucket_index) {
-    while (!bucket[bucket_index].empty()) {
-      uint32_t node_id = bucket[bucket_index].front();
-      bucket[bucket_index].pop();
+  // Return if there are no active nodes.
+  if (!num_active_nodes) {
+    return;
+  }
+  int32_t bucket_index = 0;
+  for ( ; num_active_nodes > 0 && bucket_index < max_rank; ++bucket_index) {
+    while (bucket[bucket_index] != bucket_end) {
+      uint32_t node_id = bucket[bucket_index];
+      bucket[bucket_index] = bucket_next[node_id];
       map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
       map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
       for (; it != end_it; ++it) {
-        if (!scanned[it->first] && it->second->cap - it->second->flow > 0) {
-          int32_t k = (it->second->cost + potentials[node_id] -
-                       potentials[it->first]) / eps + 1;
+        Arc* rev_arc = it->second->reverse_arc;
+        if (rev_arc->cap - rev_arc->flow > 0 &&
+            bucket_index < rank[it->first]) {
+          int32_t k = (rev_arc->cost + potential[it->first] -
+                       potential[node_id]) / eps + 1 + bucket_index;
+          int32_t old_rank = rank[it->first];
+          if (k < rank[it->first]) {
+            rank[it->first] = k;
+            // Remove node from the old bucket.
+            if (old_rank < max_rank) {
+              // Check if node is first element.
+              if (bucket[old_rank] == it->first) {
+                bucket[old_rank] = bucket_next[it->first];
+              } else {
+                uint32_t prev = bucket_prev[it->first];
+                uint32_t next = bucket_next[it->first];
+                bucket_next[prev] = next;
+                bucket_prev[next] = prev;
+              }
+            }
+            // Insert into the new bucket.
+            bucket_next[it->first] = bucket[k];
+            bucket_prev[bucket[k]] = it->first;
+            bucket[k] = it->first;
+          }
         }
       }
-      scanned[node_id] = true;
-      label[node_id] = bucket_index;
+      if (nodes_demand[node_id] > 0) {
+        num_active_nodes--;
+      }
+      if (num_active_nodes < 0) {
+        break;
+      }
+    }
+    if (num_active_nodes < 0) {
+      break;
     }
   }
   for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
-    if (scanned[node_id]) {
-      potentials[node_id] -= label[node_id] * eps;
+    int32_t min_rank = min(rank[node_id], bucket_index);
+    if (min_rank > 0) {
+      potential[node_id] -= eps * min_rank;
     }
   }
+}
+
+void MinCostFlow::priceRefinement(vector<int32_t>& potentials) {
+}
+
+void MinCostFlow::arcFixing() {
+}
+
+void MinCostFlow::pushLookahead(uint32_t dst_node_id) {
 }

@@ -34,6 +34,8 @@ class MinCostFlow {
 
  private:
   Graph graph_;
+  uint32_t relabel_cnt;
+  uint32_t pushes_cnt;
 
   // Returns true if it removes a negative cycle.
   bool removeNegativeCycles(vector<int32_t>& distance,
@@ -47,6 +49,9 @@ class MinCostFlow {
                  vector<int32_t>& nodes_demand, int32_t eps);
   int32_t scaleUpCosts();
   void globalPotentialsUpdate(vector<int32_t>& potentials, int32_t eps);
+  void priceRefinement(vector<int32_t>& potentials);
+  void arcFixing();
+  void pushLookahead(uint32_t dst_node_id);
 
 };
 #endif
