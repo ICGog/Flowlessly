@@ -494,3 +494,39 @@ void MinCostFlow::costScaling() {
     refine(potentials, eps);
   }
 }
+
+void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potentials,
+                                         int32_t eps) {
+  uint32_t num_nodes = graph_.get_num_nodes();
+  vector<bool> scanned(num_nodes + 1, false);
+  vector<uint32_t> label(num_nodes + 1, 0);
+  vector<queue<uint32_t> > bucket((num_nodes + 1) * FLAGS_alpha_scaling_factor);
+  vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+    if (nodes_demand[node_id] < 0) {
+      bucket[0].push(node_id);
+    }
+  }
+  for (uint32_t bucket_index = 0; ; ++bucket_index) {
+    while (!bucket[bucket_index].empty()) {
+      uint32_t node_id = bucket[bucket_index].front();
+      bucket[bucket_index].pop();
+      map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+      map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
+      for (; it != end_it; ++it) {
+        if (!scanned[it->first] && it->second->cap - it->second->flow > 0) {
+          int32_t k = (it->second->cost + potentials[node_id] -
+                       potentials[it->first]) / eps + 1;
+        }
+      }
+      scanned[node_id] = true;
+      label[node_id] = bucket_index;
+    }
+  }
+  for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+    if (scanned[node_id]) {
+      potentials[node_id] -= label[node_id] * eps;
+    }
+  }
+}

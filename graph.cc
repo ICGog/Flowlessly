@@ -4,6 +4,7 @@
 #include <boost/lexical_cast.hpp>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
+#include <stack>
 
 using boost::algorithm::is_any_of;
 using boost::lexical_cast;
@@ -183,4 +184,42 @@ void Graph::removeSinkAndSource() {
   nodes_demand.pop_back();
   single_source_node.pop_back();
   single_sink_node.pop_back();
+}
+
+// Construct a topological order of the graph.
+bool Graph::orderTopologically(vector<int32_t>& potentials,
+                               vector<uint32_t>& ordered) {
+  vector<uint32_t>& source_nodes = get_source_nodes();
+  stack<uint32_t> to_visit;
+  // 0 - node not visited.
+  // 1 - node visited but didn't finished yet all its subtrees.
+  // 2 - node visited completly.
+  vector<uint8_t> marked(num_nodes + 1, 0);
+  for (vector<uint32_t>::const_iterator it = source_nodes.begin();
+       it != source_nodes.end(); ++it) {
+    to_visit.push(*it);
+  }
+  while (!to_visit.empty()) {
+    uint32_t node_id = to_visit.top();
+    to_visit.pop();
+    // If marked temporarly then we have a cycle.
+    if (marked[node_id] == 1) {
+      // Return partial result.
+      return false;
+    } else {
+      marked[node_id] = 1;
+      ordered.push_back(node_id);
+      map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+      map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
+      for (; it != end_it; ++it) {
+        if (it->second->cap - it->second->flow > 0 && marked[it->first] == 0 &&
+            it->second->cost + potentials[node_id] -
+            potentials[it->first] < 0) {
+          to_visit.push(it->first);
+        }
+      }
+      marked[node_id] = 2;
+    }
+  }
+  return true;
 }

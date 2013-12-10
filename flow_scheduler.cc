@@ -36,6 +36,12 @@ int main(int argc, char *argv[]) {
   graph.readGraph(FLAGS_graph_file);
   graph.logGraph();
   MinCostFlow min_cost_flow(graph);
+  vector<uint32_t> order;
+  vector<int32_t> potentials(10, 0);
+  graph.orderTopologically(potentials, order);
+  for (vector<uint32_t>::iterator it = order.begin(); it != order.end(); ++it) {
+    LOG(INFO) << "AAAA: " << *it;
+  }
   if (!FLAGS_algorithm.compare("bellman_ford")) {
     LOG(INFO) << "------------ BellmanFord ------------";
     uint32_t num_nodes = graph.get_num_nodes() + 1;

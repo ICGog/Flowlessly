@@ -46,6 +46,7 @@ class MinCostFlow {
   void discharge(queue<uint32_t>& active_nodes, vector<int32_t>& potentials,
                  vector<int32_t>& nodes_demand, int32_t eps);
   int32_t scaleUpCosts();
+  void globalPotentialsUpdate(vector<int32_t>& potentials, int32_t eps);
 
 };
 #endif

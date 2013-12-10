@@ -39,6 +39,8 @@ class Graph {
   bool hasSinkAndSource();
   void removeSinkAndSource();
   void addSinkAndSource();
+  bool orderTopologically(vector<int32_t>& potentials,
+                          vector<uint32_t>& ordered);
 
  private:
   void allocateGraphMemory(uint32_t num_nodes, uint32_t num_arcs);
