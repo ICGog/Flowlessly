@@ -12,6 +12,14 @@ int32_t Arc::get_cost() {
   return cost;
 }
 
+uint32_t Arc::get_src_node_id() {
+  return src_node_id;
+}
+
+uint32_t Arc::get_dst_node_id() {
+  return dst_node_id;
+}
+
 Arc* Arc::get_reverse_arc() {
   return reverse_arc;
 }

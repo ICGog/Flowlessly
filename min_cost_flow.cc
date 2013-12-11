@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <boost/heap/binomial_heap.hpp>
+#include <cmath>
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <limits>
@@ -551,8 +552,8 @@ void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potential,
         Arc* rev_arc = it->second->reverse_arc;
         if (rev_arc->cap - rev_arc->flow > 0 &&
             bucket_index < rank[it->first]) {
-          int32_t k = (rev_arc->cost + potential[it->first] -
-                       potential[node_id]) / eps + 1 + bucket_index;
+          int32_t k = floor((rev_arc->cost + potential[it->first] -
+                             potential[node_id]) / eps) + 1 + bucket_index;
           int32_t old_rank = rank[it->first];
           if (k < rank[it->first]) {
             rank[it->first] = k;
@@ -594,10 +595,96 @@ void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potential,
   }
 }
 
-void MinCostFlow::priceRefinement(vector<int32_t>& potentials) {
+void MinCostFlow::priceRefinement(vector<int32_t>& potential, int32_t eps) {
+  uint32_t num_nodes = graph_.get_num_nodes();
+  uint32_t max_rank = FLAGS_alpha_scaling_factor * num_nodes;
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  vector<uint32_t> ordered_nodes;
+  vector<int32_t> distance(num_nodes + 1, 0);
+  uint32_t bucket_end = num_nodes + 1;
+  vector<uint32_t> bucket(max_rank + 1, 0);
+  vector<uint32_t> bucket_prev(num_nodes + 1, 0);
+  vector<uint32_t> bucket_next(num_nodes + 1, 0);
+  if (!graph_.orderTopologically(potential, ordered_nodes)) {
+    // Graph contains a cycle. Cannot update potential
+    return;
+  }
+  for (vector<uint32_t>::iterator node_it = ordered_nodes.begin();
+       node_it != ordered_nodes.end(); ++node_it) {
+    map<uint32_t, Arc*>::const_iterator it = arcs[*node_it].begin();
+    map<uint32_t, Arc*>::const_iterator end_it = arcs[*node_it].end();
+    for (; it != end_it; ++it) {
+      int32_t reduced_cost = ceil((it->second->cost + potential[*node_it] -
+                                   potential[it->first]) / eps);
+      if (distance[*node_it] + reduced_cost < distance[it->first]) {
+        distance[it->first] = distance[*node_it] + reduced_cost;
+      }
+    }
+  }
+  // Insert node_id at -distance[node_id].
+  for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+    uint32_t bucket_index = -distance[node_id];
+    bucket_next[node_id] = bucket[bucket_index];
+    bucket_prev[bucket[bucket_index]] = node_id;
+    bucket[bucket_index] = node_id;
+  }
+  for (int32_t bucket_index = max_rank; bucket_index >= 0; --bucket_index) {
+    while (bucket[bucket_index] != bucket_end) {
+      uint32_t node_id = bucket[bucket_index];
+      bucket[bucket_index] = bucket_next[node_id];
+      map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+      map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
+      for (; it != end_it; ++it) {
+      }
+    }
+  }
 }
 
-void MinCostFlow::arcFixing() {
+// NOTE: if threshold is set to a smaller value than 2*n*eps then the
+// problem may become infeasable. Check the paper.
+void MinCostFlow::arcsFixing(vector<int32_t>& potential,
+                             int32_t fix_threshold) {
+  uint32_t num_nodes = graph_.get_num_nodes();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  list<Arc*>& fixed_arcs = graph_.get_fixed_arcs();
+  for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+    map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+    map<uint32_t, Arc*>::iterator end_it = arcs[node_id].end();
+    while (it != end_it) {
+      if (it->second->cost + potential[node_id] - potential[it->first] >
+          fix_threshold) {
+        // Fix node.
+        fixed_arcs.push_front(it->second);
+        map<uint32_t, Arc*>::iterator to_erase_it = it;
+        arcs[node_id].erase(it->first);
+        ++it;
+        arcs[node_id].erase(to_erase_it);
+      } else {
+        ++it;
+      }
+    }
+  }
+}
+
+// NOTE: if threshold is set to a smaller value than 2*n*eps then the
+// problem may become infeasable. Check the paper.
+void MinCostFlow::arcsUnfixing(vector<int32_t>& potential,
+                               int32_t fix_threshold) {
+  uint32_t num_nodes = graph_.get_num_nodes();
+  vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+  list<Arc*>& fixed_arcs = graph_.get_fixed_arcs();
+  for (list<Arc*>::iterator it = fixed_arcs.begin(); it != fixed_arcs.end(); ) {
+    if ((*it)->cost + potential[(*it)->src_node_id] -
+        potential[(*it)->dst_node_id] < fix_threshold) {
+      // Unfix node.
+      list<Arc*>::iterator to_erase_it = it;
+      arcs[(*it)->src_node_id][(*it)->dst_node_id] = *it;
+      ++it;
+      fixed_arcs.erase(to_erase_it);
+    } else {
+      ++it;
+    }
+  }
 }
 
 void MinCostFlow::pushLookahead(uint32_t dst_node_id) {

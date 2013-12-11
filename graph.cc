@@ -34,8 +34,10 @@ void Graph::readGraph(const string& graph_file_path) {
         int32_t arc_min_flow = lexical_cast<uint32_t>(vals[3]);
         uint32_t arc_capacity = lexical_cast<uint32_t>(vals[4]);
         int32_t arc_cost = lexical_cast<uint32_t>(vals[5]);
-        Arc* arc = new Arc(arc_capacity, arc_min_flow, arc_cost, NULL);
-        Arc* reverse_arc = new Arc(0, -arc_min_flow, -arc_cost, arc);
+        Arc* arc = new Arc(src_node, dst_node, arc_capacity, arc_min_flow,
+                           arc_cost, NULL);
+        Arc* reverse_arc = new Arc(dst_node, src_node, 0, -arc_min_flow,
+                                   -arc_cost, arc);
         arc->set_reverse_arc(reverse_arc);
         arcs[src_node][dst_node] = arc;
         arcs[dst_node][src_node] = reverse_arc;
@@ -113,6 +115,10 @@ vector<map<uint32_t, Arc*> >& Graph::get_arcs() {
   return arcs;
 }
 
+list<Arc*>& Graph::get_fixed_arcs() {
+  return fixed_arcs;
+}
+
 vector<uint32_t>& Graph::get_source_nodes() {
   if (added_sink_and_source) {
     return single_source_node;
@@ -146,8 +152,8 @@ void Graph::addSinkAndSource() {
   single_sink_node.push_back(num_nodes);
   for (vector<uint32_t>::iterator it = source_nodes.begin();
        it != source_nodes.end(); ++it) {
-    Arc* arc = new Arc(nodes_demand[*it], 0, 0, NULL);
-    Arc* reverse_arc = new Arc(0, 0, 0, arc);
+    Arc* arc = new Arc(num_nodes - 1, *it, nodes_demand[*it], 0, 0, NULL);
+    Arc* reverse_arc = new Arc(*it, num_nodes - 1, 0, 0, 0, arc);
     arc->set_reverse_arc(reverse_arc);
     arcs[num_nodes - 1][*it] = arc;
     arcs[*it][num_nodes - 1] = reverse_arc;
@@ -156,8 +162,8 @@ void Graph::addSinkAndSource() {
   }
   for (vector<uint32_t>::iterator it = sink_nodes.begin();
        it != sink_nodes.end(); ++it) {
-    Arc* arc = new Arc(0, 0, 0, NULL);
-    Arc* reverse_arc = new Arc(-nodes_demand[*it], 0, 0, arc);
+    Arc* arc = new Arc(num_nodes, *it, 0, 0, 0, NULL);
+    Arc* reverse_arc = new Arc(*it, num_nodes, -nodes_demand[*it], 0, 0, arc);
     arc->set_reverse_arc(reverse_arc);
     arcs[num_nodes][*it] = arc;
     arcs[*it][num_nodes] = reverse_arc;

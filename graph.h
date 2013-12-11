@@ -1,6 +1,7 @@
 #ifndef GRAPH_H
 #define GRAPH_H
 
+#include <list>
 #include <map>
 #include <string>
 #include <stdint.h>
@@ -34,6 +35,7 @@ class Graph {
   uint32_t get_num_arcs();
   vector<int32_t>& get_nodes_demand();
   vector<map<uint32_t, Arc*> >& get_arcs();
+  list<Arc*>& get_fixed_arcs();
   vector<uint32_t>& get_source_nodes();
   vector<uint32_t>& get_sink_nodes();
   bool hasSinkAndSource();
@@ -51,6 +53,7 @@ class Graph {
   // negative value if the node is a demand one.
   vector<int32_t> nodes_demand;
   vector<map<uint32_t, Arc*> > arcs;
+  list<Arc*> fixed_arcs;
   vector<uint32_t> source_nodes;
   vector<uint32_t> sink_nodes;
   vector<uint32_t> single_source_node;

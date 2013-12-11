@@ -44,13 +44,14 @@ class MinCostFlow {
                    uint32_t src_node, uint32_t dst_node);
   void maxFlow();
   void reduceCost(vector<int32_t>& potential);
-  void refine(vector<int32_t>& potentials, int32_t eps);
-  void discharge(queue<uint32_t>& active_nodes, vector<int32_t>& potentials,
+  void refine(vector<int32_t>& potential, int32_t eps);
+  void discharge(queue<uint32_t>& active_nodes, vector<int32_t>& potential,
                  vector<int32_t>& nodes_demand, int32_t eps);
   int32_t scaleUpCosts();
-  void globalPotentialsUpdate(vector<int32_t>& potentials, int32_t eps);
-  void priceRefinement(vector<int32_t>& potentials);
-  void arcFixing();
+  void globalPotentialsUpdate(vector<int32_t>& potential, int32_t eps);
+  void priceRefinement(vector<int32_t>& potential, int32_t eps);
+  void arcsFixing(vector<int32_t>& potential, int32_t fix_threshold);
+  void arcsUnfixing(vector<int32_t>& potential, int32_t fix_threshold);
   void pushLookahead(uint32_t dst_node_id);
 
 };
