@@ -49,10 +49,10 @@ class MinCostFlow {
                  vector<int32_t>& nodes_demand, int32_t eps);
   int32_t scaleUpCosts();
   void globalPotentialsUpdate(vector<int32_t>& potential, int32_t eps);
-  void priceRefinement(vector<int32_t>& potential, int32_t eps);
+  bool priceRefinement(vector<int32_t>& potential, int32_t eps);
   void arcsFixing(vector<int32_t>& potential, int32_t fix_threshold);
   void arcsUnfixing(vector<int32_t>& potential, int32_t fix_threshold);
-  void pushLookahead(uint32_t dst_node_id);
+  void pushLookahead(uint32_t src_node_id, uint32_t dst_node_id);
 
 };
 #endif

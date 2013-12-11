@@ -462,7 +462,7 @@ void MinCostFlow::refine(vector<int32_t>& potentials, int32_t eps) {
 }
 
 // Scales up costs by alpha * num_nodes
-// It returns the maximum cost.
+// It returns the value from where eps should start.
 int32_t MinCostFlow::scaleUpCosts() {
   uint32_t num_nodes = graph_.get_num_nodes();
   const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
@@ -477,7 +477,8 @@ int32_t MinCostFlow::scaleUpCosts() {
       }
     }
   }
-  return max_cost_arc;
+  return pow(FLAGS_alpha_scaling_factor,
+             ceil(log(max_cost_arc) / log(FLAGS_alpha_scaling_factor)));
 }
 
 void MinCostFlow::costScaling() {
@@ -500,8 +501,17 @@ void MinCostFlow::costScaling() {
        eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
          1 : eps / FLAGS_alpha_scaling_factor) {
     graph_.logGraph();
-    refine(potentials, eps);
+    if (eps <= pow(FLAGS_alpha_scaling_factor,
+                   log(num_nodes) / log(FLAGS_alpha_scaling_factor))) {
+      //      if (!priceRefinement(potentials, eps)) {
+        refine(potentials, eps);
+        //      }
+    } else {
+      refine(potentials, eps);
+    }
+    //    arcsFixing(potentials, 2 * (num_nodes - 1) * eps);
   }
+  //  arcsUnfixing(potentials, numeric_limits<int32_t>::max());
   LOG(ERROR) << "Num relables: " << relabel_cnt;
   LOG(ERROR) << "Num pushes: " << pushes_cnt;
 }
@@ -595,7 +605,7 @@ void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potential,
   }
 }
 
-void MinCostFlow::priceRefinement(vector<int32_t>& potential, int32_t eps) {
+bool MinCostFlow::priceRefinement(vector<int32_t>& potential, int32_t eps) {
   uint32_t num_nodes = graph_.get_num_nodes();
   uint32_t max_rank = FLAGS_alpha_scaling_factor * num_nodes;
   vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
@@ -607,7 +617,7 @@ void MinCostFlow::priceRefinement(vector<int32_t>& potential, int32_t eps) {
   vector<uint32_t> bucket_next(num_nodes + 1, 0);
   if (!graph_.orderTopologically(potential, ordered_nodes)) {
     // Graph contains a cycle. Cannot update potential
-    return;
+    return false;
   }
   for (vector<uint32_t>::iterator node_it = ordered_nodes.begin();
        node_it != ordered_nodes.end(); ++node_it) {
@@ -638,6 +648,7 @@ void MinCostFlow::priceRefinement(vector<int32_t>& potential, int32_t eps) {
       }
     }
   }
+  return true;
 }
 
 // NOTE: if threshold is set to a smaller value than 2*n*eps then the
@@ -655,10 +666,12 @@ void MinCostFlow::arcsFixing(vector<int32_t>& potential,
           fix_threshold) {
         // Fix node.
         fixed_arcs.push_front(it->second);
+        fixed_arcs.push_front(it->second->reverse_arc);
         map<uint32_t, Arc*>::iterator to_erase_it = it;
-        arcs[node_id].erase(it->first);
+        uint32_t dst_node_id = it->first;
         ++it;
         arcs[node_id].erase(to_erase_it);
+        arcs[dst_node_id].erase(node_id);
       } else {
         ++it;
       }
@@ -687,5 +700,5 @@ void MinCostFlow::arcsUnfixing(vector<int32_t>& potential,
   }
 }
 
-void MinCostFlow::pushLookahead(uint32_t dst_node_id) {
+void MinCostFlow::pushLookahead(uint32_t src_node_id, uint32_t dst_node_id) {
 }
