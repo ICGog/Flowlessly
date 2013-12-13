@@ -33,7 +33,7 @@ void Graph::readGraph(const string& graph_file_path) {
         uint32_t dst_node = lexical_cast<uint32_t>(vals[2]);
         int32_t arc_min_flow = lexical_cast<uint32_t>(vals[3]);
         uint32_t arc_capacity = lexical_cast<uint32_t>(vals[4]);
-        int32_t arc_cost = lexical_cast<uint32_t>(vals[5]);
+        int64_t arc_cost = lexical_cast<int64_t>(vals[5]);
         Arc* arc = new Arc(src_node, dst_node, arc_capacity, arc_min_flow,
                            arc_cost, NULL);
         Arc* reverse_arc = new Arc(dst_node, src_node, 0, -arc_min_flow,
@@ -65,7 +65,7 @@ void Graph::readGraph(const string& graph_file_path) {
 }
 
 void Graph::writeGraph(const string& out_graph_file) {
-  int32_t min_cost = 0;
+  int64_t min_cost = 0;
   FILE *graph_file = NULL;
   if ((graph_file = fopen(out_graph_file.c_str(), "w")) == NULL) {
     LOG(ERROR) << "Could no open graph file for writing: " << out_graph_file;
@@ -81,12 +81,12 @@ void Graph::writeGraph(const string& out_graph_file) {
       }
     }
   }
-  fprintf(graph_file, "s %d\n", min_cost);
+  fprintf(graph_file, "s %jd\n", min_cost);
   fclose(graph_file);
 }
 
 void Graph::logGraph() {
-  int32_t min_cost = 0;
+  int64_t min_cost = 0;
   LOG(INFO) << "src dst flow cap cost";
   for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
     map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
@@ -199,7 +199,7 @@ void Graph::removeSinkAndSource() {
 }
 
 // Construct a topological order of the graph.
-bool Graph::orderTopologically(vector<int32_t>& potentials,
+bool Graph::orderTopologically(vector<int64_t>& potentials,
                                vector<uint32_t>& ordered) {
   vector<uint32_t>& source_nodes = get_source_nodes();
   stack<uint32_t> to_visit;

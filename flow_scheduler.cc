@@ -10,7 +10,7 @@ DEFINE_string(out_graph_file, "graph.out",
               "File the output graph will be written");
 DEFINE_string(algorithm, "cycle_cancelling",
               "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path, cost_scaling");
-DEFINE_int32(alpha_scaling_factor, 2,
+DEFINE_int64(alpha_scaling_factor, 2,
              "Value by which Eps is divided in the cost scaling algorithm");
 
 inline void init(int argc, char *argv[]) {
@@ -39,14 +39,14 @@ int main(int argc, char *argv[]) {
   if (!FLAGS_algorithm.compare("bellman_ford")) {
     LOG(INFO) << "------------ BellmanFord ------------";
     uint32_t num_nodes = graph.get_num_nodes() + 1;
-    vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
+    vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
     min_cost_flow.BellmanFord(graph.get_source_nodes(), distance, predecessor);
     min_cost_flow.logCosts(distance, predecessor);
   } else if (!FLAGS_algorithm.compare("dijkstra")) {
     LOG(INFO) << "------------ Dijkstra ------------";
     uint32_t num_nodes = graph.get_num_nodes() + 1;
-    vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
+    vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
     min_cost_flow.DijkstraSimple(graph.get_source_nodes(), distance,
                                  predecessor);
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
   } else if (!FLAGS_algorithm.compare("dijkstra_heap")) {
     LOG(INFO) << "------------ Dijkstra with heaps ------------";
     uint32_t num_nodes = graph.get_num_nodes() + 1;
-    vector<int32_t> distance(num_nodes, numeric_limits<int32_t>::max());
+    vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
     min_cost_flow.DijkstraOptimized(graph.get_source_nodes(), distance,
                                     predecessor);

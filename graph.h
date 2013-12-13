@@ -41,7 +41,7 @@ class Graph {
   bool hasSinkAndSource();
   void removeSinkAndSource();
   void addSinkAndSource();
-  bool orderTopologically(vector<int32_t>& potentials,
+  bool orderTopologically(vector<int64_t>& potentials,
                           vector<uint32_t>& ordered);
 
  private:

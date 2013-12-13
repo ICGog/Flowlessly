@@ -8,7 +8,7 @@ int32_t Arc::get_flow() {
   return flow;
 }
 
-int32_t Arc::get_cost() {
+int64_t Arc::get_cost() {
   return cost;
 }
 
