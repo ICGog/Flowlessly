@@ -489,29 +489,24 @@ void MinCostFlow::costScaling() {
   //      (e, f, p) = refine(e, f p)
   uint32_t num_nodes = graph_.get_num_nodes() + 1;
   vector<int32_t> potentials(num_nodes, 0);
-  if (!graph_.hasSinkAndSource()) {
-    graph_.addSinkAndSource();
-  }
-  maxFlow();
-  graph_.removeSinkAndSource();
-  graph_.logGraph();
   relabel_cnt = 0;
   pushes_cnt = 0;
   for (int32_t eps = scaleUpCosts() / FLAGS_alpha_scaling_factor; eps >= 1;
        eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
          1 : eps / FLAGS_alpha_scaling_factor) {
     graph_.logGraph();
+    //    globalPotentialsUpdate(potentials, eps);
     if (eps <= pow(FLAGS_alpha_scaling_factor,
                    log(num_nodes) / log(FLAGS_alpha_scaling_factor))) {
-      //      if (!priceRefinement(potentials, eps)) {
-        refine(potentials, eps);
+      //if (!priceRefinement(potentials, eps)) {
+      refine(potentials, eps);
         //      }
     } else {
       refine(potentials, eps);
     }
-    //    arcsFixing(potentials, 2 * (num_nodes - 1) * eps);
+    arcsFixing(potentials, 2 * (num_nodes - 1) * eps);
   }
-  //  arcsUnfixing(potentials, numeric_limits<int32_t>::max());
+  arcsUnfixing(potentials, numeric_limits<int32_t>::max());
   LOG(ERROR) << "Num relables: " << relabel_cnt;
   LOG(ERROR) << "Num pushes: " << pushes_cnt;
 }
@@ -530,7 +525,7 @@ void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potential,
   vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
   uint32_t num_active_nodes = 0;
   // Initialize buckets.
-  for (uint32_t cur_rank = 0; cur_rank < max_rank; ++cur_rank) {
+  for (uint32_t cur_rank = 0; cur_rank <= max_rank; ++cur_rank) {
     bucket[cur_rank] = bucket_end;
   }
   // Put nodes with negative excess in bucket[0].
@@ -541,18 +536,20 @@ void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potential,
       bucket_prev[bucket[0]] = node_id;
       bucket[0] = node_id;
     } else {
-      rank[node_id] = max_rank;
+      rank[node_id] = max_rank + 1;
       if (nodes_demand[node_id] > 0) {
         num_active_nodes++;
       }
     }
   }
+  // TODO(ionel): Explore if returning while a small number of nodes are
+  // still active improves runtime.
   // Return if there are no active nodes.
-  if (!num_active_nodes) {
+  if (num_active_nodes == 0) {
     return;
   }
   int32_t bucket_index = 0;
-  for ( ; num_active_nodes > 0 && bucket_index < max_rank; ++bucket_index) {
+  for ( ; num_active_nodes > 0 && bucket_index <= max_rank; ++bucket_index) {
     while (bucket[bucket_index] != bucket_end) {
       uint32_t node_id = bucket[bucket_index];
       bucket[bucket_index] = bucket_next[node_id];
@@ -568,7 +565,7 @@ void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potential,
           if (k < rank[it->first]) {
             rank[it->first] = k;
             // Remove node from the old bucket.
-            if (old_rank < max_rank) {
+            if (old_rank <= max_rank) {
               // Check if node is first element.
               if (bucket[old_rank] == it->first) {
                 bucket[old_rank] = bucket_next[it->first];
@@ -589,11 +586,11 @@ void MinCostFlow::globalPotentialsUpdate(vector<int32_t>& potential,
       if (nodes_demand[node_id] > 0) {
         num_active_nodes--;
       }
-      if (num_active_nodes < 0) {
+      if (num_active_nodes == 0) {
         break;
       }
     }
-    if (num_active_nodes < 0) {
+    if (num_active_nodes == 0) {
       break;
     }
   }
