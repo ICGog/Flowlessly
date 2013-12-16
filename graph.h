@@ -25,6 +25,7 @@ namespace flowlessly {
       num_arcs = copy.num_arcs;
       nodes_demand = copy.nodes_demand;
       arcs = copy.arcs;
+      admisible_arcs = copy.admisible_arcs;
       source_nodes = copy.source_nodes;
       sink_nodes = copy.sink_nodes;
       added_sink_and_source = copy.added_sink_and_source;
@@ -37,6 +38,7 @@ namespace flowlessly {
     uint32_t get_num_arcs();
     vector<int32_t>& get_nodes_demand();
     vector<map<uint32_t, Arc*> >& get_arcs();
+    vector<map<uint32_t, Arc*> >& get_admisible_arcs();
     list<Arc*>& get_fixed_arcs();
     vector<uint32_t>& get_source_nodes();
     vector<uint32_t>& get_sink_nodes();
@@ -55,6 +57,7 @@ namespace flowlessly {
     // negative value if the node is a demand one.
     vector<int32_t> nodes_demand;
     vector<map<uint32_t, Arc*> > arcs;
+    vector<map<uint32_t, Arc*> > admisible_arcs;
     list<Arc*> fixed_arcs;
     vector<uint32_t> source_nodes;
     vector<uint32_t> sink_nodes;

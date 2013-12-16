@@ -14,6 +14,7 @@ namespace flowlessly {
 
   void Graph::allocateGraphMemory(uint32_t num_nodes, uint32_t num_arcs) {
     arcs.resize(num_nodes + 1);
+    admisible_arcs.resize(num_nodes + 1);
     nodes_demand.resize(num_nodes + 1);
   }
 
@@ -115,6 +116,10 @@ namespace flowlessly {
 
   vector<map<uint32_t, Arc*> >& Graph::get_arcs() {
     return arcs;
+  }
+
+  vector<map<uint32_t, Arc*> >& Graph::get_admisible_arcs() {
+    return admisible_arcs;
   }
 
   list<Arc*>& Graph::get_fixed_arcs() {

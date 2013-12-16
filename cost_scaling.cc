@@ -17,36 +17,50 @@ namespace flowlessly {
                               vector<int32_t>& nodes_demand, int64_t eps) {
     uint32_t node_id = active_nodes.front();
     active_nodes.pop();
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     while (nodes_demand[node_id] > 0) {
       bool has_neg_cost_arc = false;
-      map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
-      map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
-      for (; it != end_it; ++it) {
-        LOG(INFO) << "Cost: (" << node_id << ", " << it->first << "): "
-                  << it->second->cost + potentials[node_id] - potentials[it->first];
-        if (it->second->cost + potentials[node_id] - potentials[it->first] < 0) {
-          if (it->second->cap > 0) {
-            has_neg_cost_arc = true;
-            // Push flow.
-            pushes_cnt++;
-            int32_t min_flow = min(nodes_demand[node_id], it->second->cap);
-            LOG(INFO) << "Pushing flow " << min_flow << " on (" << node_id
-                      << ", " << it->first << ")";
-            it->second->cap -= min_flow;
-            arcs[it->first][node_id]->cap += min_flow;
-            nodes_demand[node_id] -= min_flow;
-            // If node doesn't have any excess then it will be activated.
-            if (nodes_demand[it->first] <= 0) {
-              active_nodes.push(it->first);
-            }
-            nodes_demand[it->first] += min_flow;
-          }
+      for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
+           it != admisible_arcs[node_id].end(); ) {
+        has_neg_cost_arc = true;
+        // Push flow.
+        pushes_cnt++;
+        int32_t min_flow = min(nodes_demand[node_id], it->second->cap);
+        LOG(INFO) << "Pushing flow " << min_flow << " on (" << node_id
+                  << ", " << it->first << ")";
+        it->second->cap -= min_flow;
+        it->second->reverse_arc->cap += min_flow;
+        nodes_demand[node_id] -= min_flow;
+        // If node doesn't have any excess then it will be activated.
+        if (nodes_demand[it->first] <= 0) {
+          active_nodes.push(it->first);
+        }
+        nodes_demand[it->first] += min_flow;
+        if (it->second->cap == 0) {
+          map<uint32_t, Arc*>::iterator to_erase_it = it;
+          ++it;
+          admisible_arcs[node_id].erase(to_erase_it);
+        } else {
+          ++it;
         }
       }
       if (!has_neg_cost_arc) {
         // Relabel vertex.
         relabel_cnt++;
+        for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
+             n_it != arcs[node_id].end(); ++n_it) {
+          int64_t reduced_cost = n_it->second->cost + potentials[node_id] -
+            potentials[n_it->first];
+          if (reduced_cost >= 0 && reduced_cost < eps) {
+            admisible_arcs[node_id][n_it->first] = n_it->second;
+          }
+          reduced_cost = -n_it->second->cost + potentials[n_it->first] -
+            potentials[node_id];
+          if (reduced_cost < 0 && reduced_cost >= -eps) {
+            admisible_arcs[n_it->first].erase(node_id);
+          }
+        }
         potentials[node_id] -= eps;
         LOG(INFO) << "Potential of " << node_id << " : " << potentials[node_id];
       }
@@ -56,19 +70,19 @@ namespace flowlessly {
   void CostScaling::refine(vector<int64_t>& potentials, int64_t eps) {
     // Saturate arcs with negative reduced cost.
     uint32_t num_nodes = graph_.get_num_nodes() + 1;
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
     vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
     // Saturate all the arcs with negative cost.
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
-      map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
-      map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
-      for (; it != end_it; ++it) {
-        if (it->second->cost + potentials[node_id] - potentials[it->first] < 0) {
+      for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
+           it != admisible_arcs[node_id].end(); ) {
           nodes_demand[node_id] -= it->second->cap;
           nodes_demand[it->first] += it->second->cap;
-          arcs[it->first][node_id]->cap += it->second->cap;
+          it->second->reverse_arc->cap += it->second->cap;
           it->second->cap = 0;
-        }
+          map<uint32_t, Arc*>::iterator to_erase_it = it;
+          ++it;
+          admisible_arcs[node_id].erase(to_erase_it);
       }
     }
     graph_.logGraph();
@@ -118,7 +132,7 @@ namespace flowlessly {
          eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
            1 : eps / FLAGS_alpha_scaling_factor) {
       graph_.logGraph();
-      //    globalPotentialsUpdate(potentials, eps);
+      //globalPotentialsUpdate(potentials, eps);
       if (eps <= pow(FLAGS_alpha_scaling_factor,
                      log(num_nodes) / log(FLAGS_alpha_scaling_factor))) {
         //if (!priceRefinement(potentials, eps)) {
