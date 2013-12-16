@@ -39,7 +39,7 @@ void MinCostFlow::BellmanFord(const vector<uint32_t>& source_nodes,
         map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
         map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
         for (; it != end_it; ++it) {
-          if (it->second->cap - it->second->flow > 0 &&
+          if (it->second->cap > 0 &&
               distance[node_id] + it->second->cost < distance[it->first]) {
             distance[it->first] = distance[node_id] + it->second->cost;
             predecessor[it->first] = node_id;
@@ -68,9 +68,7 @@ void MinCostFlow::augmentFlow(vector<uint32_t>& predecessor,
   // Compute the minimum residual in the cycle.
   do {
     Arc* arc = arcs[predecessor[cur_node]][cur_node];
-    if (arc->cap - arc->flow < min_flow) {
-      min_flow = arc->cap - arc->flow;
-    }
+    min_flow = min(min_flow, arc->cap);
     LOG(INFO) << "Negative cycle: (" << predecessor[cur_node] << ", "
               << cur_node << ")";
     cur_node = predecessor[cur_node];
@@ -78,8 +76,8 @@ void MinCostFlow::augmentFlow(vector<uint32_t>& predecessor,
   LOG(INFO) << "Augmenting negative cycle with flow: " << min_flow;
   do {
     Arc* arc = arcs[predecessor[cur_node]][cur_node];
-    arc->flow += min_flow;
-    arc->reverse_arc->flow -= min_flow;
+    arc->cap -= min_flow;
+    arc->reverse_arc->cap += min_flow;
     nodes_demand[predecessor[cur_node]] -= min_flow;
     nodes_demand[cur_node] += min_flow;
     cur_node = predecessor[cur_node];
@@ -94,7 +92,7 @@ bool MinCostFlow::removeNegativeCycles(vector<int64_t>& distance,
     map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
     map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
-      if (it->second->cap - it->second->flow > 0 &&
+      if (it->second->cap > 0 &&
           distance[node_id] + it->second->cost < distance[it->first]) {
         // Found negative cycle.
         augmentFlow(predecessor, node_id, it->first);
@@ -131,7 +129,7 @@ void MinCostFlow::DijkstraSimple(const vector<uint32_t>& source_nodes,
     map<uint32_t, Arc*>::const_iterator it = arcs[min_node_id].begin();
     map<uint32_t, Arc*>::const_iterator end_it = arcs[min_node_id].end();
     for (; it != end_it; ++it) {
-      if (it->second->cap - it->second->flow > 0 &&
+      if (it->second->cap > 0 &&
           distance[min_node_id] + it->second->cost < distance[it->first]) {
         distance[it->first] = distance[min_node_id] + it->second->cost;
         predecessor[it->first] = min_node_id;
@@ -168,7 +166,7 @@ void MinCostFlow::DijkstraOptimized(const vector<uint32_t>& source_nodes,
     map<uint32_t, Arc*>::const_iterator it = arcs[min_node_id].begin();
     map<uint32_t, Arc*>::const_iterator end_it = arcs[min_node_id].end();
     for (; it != end_it; ++it) {
-      if (it->second->cap - it->second->flow > 0 &&
+      if (it->second->cap > 0 &&
           distance[min_node_id] + it->second->cost < distance[it->first]) {
         distance[it->first] = distance[min_node_id] + it->second->cost;
         if (!visited[it->first]) {
@@ -213,9 +211,8 @@ void MinCostFlow::maxFlow() {
       map<uint32_t, Arc*>::iterator it = arcs[cur_node].begin();
       map<uint32_t, Arc*>::iterator end_it = arcs[cur_node].end();
       for (; it != end_it; ++it) {
-        if (!visited[it->first] && it->second->cap - it->second->flow > 0) {
-          visited[it->first] = min(it->second->cap - it->second->flow,
-                                   visited[cur_node]);
+        if (!visited[it->first] && it->second->cap > 0) {
+          visited[it->first] = min(it->second->cap, visited[cur_node]);
           to_visit.push(it->first);
           predecessor[it->first] = cur_node;
           if (it->first == sink_node) {
@@ -224,8 +221,8 @@ void MinCostFlow::maxFlow() {
             for (uint32_t cur_node = it->first; predecessor[cur_node] > 0;
                  cur_node = predecessor[cur_node]) {
               Arc* arc = arcs[predecessor[cur_node]][cur_node];
-              arc->flow += min_aux_flow;
-              arc->reverse_arc->flow -= min_aux_flow;
+              arc->cap -= min_aux_flow;
+              arc->reverse_arc->cap += min_aux_flow;
               nodes_demand[predecessor[cur_node]] -= min_aux_flow;
               nodes_demand[cur_node] += min_aux_flow;
               LOG(INFO) << "Flow path: (" << predecessor[cur_node] << ", "
@@ -297,19 +294,17 @@ void MinCostFlow::successiveShortestPath() {
     fill(predecessor.begin(), predecessor.end(), 0);
     BellmanFord(source_node, distance, predecessor);
     if (distance[sink_node] < numeric_limits<int64_t>::max()) {
-      uint32_t min_flow = numeric_limits<int32_t>::max();
+      int32_t min_flow = numeric_limits<int32_t>::max();
       for (uint32_t cur_node = sink_node; cur_node != source_node[0];
            cur_node = predecessor[cur_node]) {
         Arc* arc = arcs[predecessor[cur_node]][cur_node];
-        if (arc->cap - arc->flow < min_flow) {
-          min_flow = arc->cap - arc->flow;
-        }
+        min_flow = min(min_flow, arc->cap);
       }
       for (uint32_t cur_node = sink_node; cur_node != source_node[0];
            cur_node = predecessor[cur_node]) {
         Arc* arc = arcs[predecessor[cur_node]][cur_node];
-        arc->flow += min_flow;
-        arc->reverse_arc->flow -= min_flow;
+        arc->cap -= min_flow;
+        arc->reverse_arc->cap += min_flow;
         nodes_demand[predecessor[cur_node]] -= min_flow;
         nodes_demand[cur_node] += min_flow;
       }
@@ -325,7 +320,7 @@ void MinCostFlow::reduceCost(vector<int64_t>& potential) {
     map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
       Arc* arc = it->second;
-      if (arc->cap - arc->flow > 0) {
+      if (arc->cap > 0) {
         arc->cost += potential[node_id] - potential[it->first];
       } else {
         arc->cost = 0;
@@ -368,19 +363,17 @@ void MinCostFlow::successiveShortestPathPotentials() {
     logCosts(distance, predecessor);
     if (distance[sink_node] < numeric_limits<int64_t>::max()) {
       reduceCost(distance);
-      uint32_t min_flow = numeric_limits<int32_t>::max();
+      int32_t min_flow = numeric_limits<int32_t>::max();
       for (uint32_t cur_node = sink_node; cur_node != source_node[0];
            cur_node = predecessor[cur_node]) {
         Arc* arc = arcs[predecessor[cur_node]][cur_node];
-        if (arc->cap - arc->flow < min_flow) {
-          min_flow = arc->cap - arc->flow;
-        }
+        min_flow = min(min_flow, arc->cap);
       }
       for (uint32_t cur_node = sink_node; cur_node != source_node[0];
            cur_node = predecessor[cur_node]) {
         Arc* arc = arcs[predecessor[cur_node]][cur_node];
-        arc->flow += min_flow;
-        arc->reverse_arc->flow -= min_flow;
+        arc->cap -= min_flow;
+        arc->reverse_arc->cap += min_flow;
         nodes_demand[predecessor[cur_node]] -= min_flow;
         nodes_demand[cur_node] += min_flow;
       }
@@ -402,16 +395,15 @@ void MinCostFlow::discharge(queue<uint32_t>& active_nodes,
       LOG(INFO) << "Cost: (" << node_id << ", " << it->first << "): "
                 << it->second->cost + potentials[node_id] - potentials[it->first];
       if (it->second->cost + potentials[node_id] - potentials[it->first] < 0) {
-        if (it->second->cap - it->second->flow > 0) {
+        if (it->second->cap > 0) {
           has_neg_cost_arc = true;
           // Push flow.
           pushes_cnt++;
-          int32_t min_flow = min(nodes_demand[node_id],
-                                 it->second->cap - it->second->flow);
+          int32_t min_flow = min(nodes_demand[node_id], it->second->cap);
           LOG(INFO) << "Pushing flow " << min_flow << " on (" << node_id
                     << ", " << it->first << ")";
-          it->second->flow += min_flow;
-          arcs[it->first][node_id]->flow -= min_flow;
+          it->second->cap -= min_flow;
+          arcs[it->first][node_id]->cap += min_flow;
           nodes_demand[node_id] -= min_flow;
           // If node doesn't have any excess then it will be activated.
           if (nodes_demand[it->first] <= 0) {
@@ -441,10 +433,10 @@ void MinCostFlow::refine(vector<int64_t>& potentials, int64_t eps) {
     map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
       if (it->second->cost + potentials[node_id] - potentials[it->first] < 0) {
-        nodes_demand[node_id] -= it->second->cap - it->second->flow;
-        nodes_demand[it->first] += it->second->cap - it->second->flow;
-        arcs[it->first][node_id]->flow -= it->second->cap - it->second->flow;
-        it->second->flow = it->second->cap;
+        nodes_demand[node_id] -= it->second->cap;
+        nodes_demand[it->first] += it->second->cap;
+        arcs[it->first][node_id]->cap += it->second->cap;
+        it->second->cap = 0;
       }
     }
   }
@@ -466,11 +458,12 @@ int64_t MinCostFlow::scaleUpCosts() {
   uint32_t num_nodes = graph_.get_num_nodes();
   const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
   int64_t max_cost_arc = numeric_limits<int64_t>::min();
+  int64_t scale_up = FLAGS_alpha_scaling_factor * num_nodes;
   for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
     map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
     map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
-      it->second->cost *= FLAGS_alpha_scaling_factor * num_nodes;
+      it->second->cost *= scale_up;
       if (it->second->cost > max_cost_arc) {
         max_cost_arc = it->second->cost;
       }
@@ -556,8 +549,7 @@ void MinCostFlow::globalPotentialsUpdate(vector<int64_t>& potential,
       map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
       for (; it != end_it; ++it) {
         Arc* rev_arc = it->second->reverse_arc;
-        if (rev_arc->cap - rev_arc->flow > 0 &&
-            bucket_index < rank[it->first]) {
+        if (rev_arc->cap > 0 && bucket_index < rank[it->first]) {
           int64_t k = floor((rev_arc->cost + potential[it->first] -
                              potential[node_id]) / eps) + 1 + bucket_index;
           int64_t old_rank = rank[it->first];

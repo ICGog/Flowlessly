@@ -36,6 +36,7 @@ int main(int argc, char *argv[]) {
   graph.readGraph(FLAGS_graph_file);
   graph.logGraph();
   MinCostFlow min_cost_flow(graph);
+  int64_t scale_down = 1;
   if (!FLAGS_algorithm.compare("bellman_ford")) {
     LOG(INFO) << "------------ BellmanFord ------------";
     uint32_t num_nodes = graph.get_num_nodes() + 1;
@@ -73,10 +74,11 @@ int main(int argc, char *argv[]) {
   } else if (!FLAGS_algorithm.compare("cost_scaling")) {
     LOG(INFO) << "------------ Cost scaling min cost flow ------------";
     min_cost_flow.costScaling();
+    scale_down = FLAGS_alpha_scaling_factor * graph.get_num_nodes();
   } else {
     LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
-  graph.writeGraph(FLAGS_out_graph_file);
+  graph.writeGraph(FLAGS_out_graph_file, scale_down);
   return 0;
 }

@@ -4,8 +4,8 @@ int32_t Arc::get_cap() {
   return cap;
 }
 
-int32_t Arc::get_flow() {
-  return flow;
+int32_t Arc::get_initial_cap() {
+  return initial_cap;
 }
 
 int64_t Arc::get_cost() {

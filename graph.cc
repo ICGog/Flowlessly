@@ -34,10 +34,8 @@ void Graph::readGraph(const string& graph_file_path) {
         int32_t arc_min_flow = lexical_cast<uint32_t>(vals[3]);
         uint32_t arc_capacity = lexical_cast<uint32_t>(vals[4]);
         int64_t arc_cost = lexical_cast<int64_t>(vals[5]);
-        Arc* arc = new Arc(src_node, dst_node, arc_capacity, arc_min_flow,
-                           arc_cost, NULL);
-        Arc* reverse_arc = new Arc(dst_node, src_node, 0, -arc_min_flow,
-                                   -arc_cost, arc);
+        Arc* arc = new Arc(src_node, dst_node, arc_capacity, arc_cost, NULL);
+        Arc* reverse_arc = new Arc(dst_node, src_node, 0, -arc_cost, arc);
         arc->set_reverse_arc(reverse_arc);
         arcs[src_node][dst_node] = arc;
         arcs[dst_node][src_node] = reverse_arc;
@@ -64,7 +62,7 @@ void Graph::readGraph(const string& graph_file_path) {
   fclose(graph_file);
 }
 
-void Graph::writeGraph(const string& out_graph_file) {
+void Graph::writeGraph(const string& out_graph_file, int64_t scale_down) {
   int64_t min_cost = 0;
   FILE *graph_file = NULL;
   if ((graph_file = fopen(out_graph_file.c_str(), "w")) == NULL) {
@@ -74,14 +72,15 @@ void Graph::writeGraph(const string& out_graph_file) {
     map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
     map<uint32_t, Arc*>::iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
-      if (it->second->flow > 0) {
+      if (it->second->cap < it->second->initial_cap) {
+        int32_t flow = it->second->initial_cap - it->second->cap;
         fprintf(graph_file, "f %u %u %d\n",
-                node_id, it->first, it->second->flow);
-        min_cost += it->second->flow * it->second->cost;
+                node_id, it->first, flow);
+        min_cost += flow * it->second->cost;
       }
     }
   }
-  fprintf(graph_file, "s %jd\n", min_cost);
+  fprintf(graph_file, "s %jd\n", min_cost / scale_down);
   fclose(graph_file);
 }
 
@@ -92,11 +91,12 @@ void Graph::logGraph() {
     map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
     map<uint32_t, Arc*>::iterator end_it = arcs[node_id].end();
     for (; it != end_it; ++it) {
+      int32_t flow = it->second->initial_cap - it->second->cap;
       LOG(INFO) << "f " << node_id << " " << it->first << " "
-                << it->second->flow << " " << it->second->cap << " "
+                << flow << " " << it->second->initial_cap << " "
                 << it->second->cost;
-      if (it->second->flow > 0) {
-        min_cost += it->second->flow * it->second->cost;
+      if (flow > 0) {
+        min_cost += flow * it->second->cost;
       }
     }
   }
@@ -152,8 +152,8 @@ void Graph::addSinkAndSource() {
   single_sink_node.push_back(num_nodes);
   for (vector<uint32_t>::iterator it = source_nodes.begin();
        it != source_nodes.end(); ++it) {
-    Arc* arc = new Arc(num_nodes - 1, *it, nodes_demand[*it], 0, 0, NULL);
-    Arc* reverse_arc = new Arc(*it, num_nodes - 1, 0, 0, 0, arc);
+    Arc* arc = new Arc(num_nodes - 1, *it, nodes_demand[*it], 0, NULL);
+    Arc* reverse_arc = new Arc(*it, num_nodes - 1, 0, 0, arc);
     arc->set_reverse_arc(reverse_arc);
     arcs[num_nodes - 1][*it] = arc;
     arcs[*it][num_nodes - 1] = reverse_arc;
@@ -162,8 +162,8 @@ void Graph::addSinkAndSource() {
   }
   for (vector<uint32_t>::iterator it = sink_nodes.begin();
        it != sink_nodes.end(); ++it) {
-    Arc* arc = new Arc(num_nodes, *it, 0, 0, 0, NULL);
-    Arc* reverse_arc = new Arc(*it, num_nodes, -nodes_demand[*it], 0, 0, arc);
+    Arc* arc = new Arc(num_nodes, *it, 0, 0, NULL);
+    Arc* reverse_arc = new Arc(*it, num_nodes, -nodes_demand[*it], 0, arc);
     arc->set_reverse_arc(reverse_arc);
     arcs[num_nodes][*it] = arc;
     arcs[*it][num_nodes] = reverse_arc;
@@ -176,7 +176,7 @@ void Graph::removeSinkAndSource() {
   map<uint32_t, Arc*>::iterator it = arcs[num_nodes - 1].begin();
   map<uint32_t, Arc*>::iterator end_it = arcs[num_nodes - 1].end();
   for (; it != end_it; ++it) {
-    nodes_demand[it->first] += it->second->cap - it->second->flow;
+    nodes_demand[it->first] += it->second->initial_cap - it->second->cap;
   }
   for (vector<uint32_t>::iterator it = source_nodes.begin();
        it != source_nodes.end(); ++it) {
@@ -185,7 +185,7 @@ void Graph::removeSinkAndSource() {
   for (vector<uint32_t>::iterator it = sink_nodes.begin();
        it != sink_nodes.end(); ++it) {
     Arc* arc = arcs[*it][num_nodes];
-    nodes_demand[*it] = -(arc->cap - arc->flow);
+    nodes_demand[*it] = -arc->cap;
     arcs[*it].erase(num_nodes);
   }
   added_sink_and_source = false;
@@ -224,7 +224,7 @@ bool Graph::orderTopologically(vector<int64_t>& potentials,
       map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
       map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
       for (; it != end_it; ++it) {
-        if (it->second->cap - it->second->flow > 0 && marked[it->first] == 0 &&
+        if (it->second->cap > 0 && marked[it->first] == 0 &&
             it->second->cost + potentials[node_id] -
             potentials[it->first] < 0) {
           to_visit.push(it->first);

@@ -30,7 +30,7 @@ class Graph {
 
   void readGraph(const string& graph_file);
   void logGraph();
-  void writeGraph(const string& out_graph_file);
+  void writeGraph(const string& out_graph_file, int64_t scale_down);
   uint32_t get_num_nodes();
   uint32_t get_num_arcs();
   vector<int32_t>& get_nodes_demand();
