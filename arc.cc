@@ -1,29 +1,33 @@
 #include "arc.h"
 
-int32_t Arc::get_cap() {
-  return cap;
-}
+namespace flowlessly {
 
-int32_t Arc::get_initial_cap() {
-  return initial_cap;
-}
+  int32_t Arc::get_cap() {
+    return cap;
+  }
 
-int64_t Arc::get_cost() {
-  return cost;
-}
+  int32_t Arc::get_initial_cap() {
+    return initial_cap;
+  }
 
-uint32_t Arc::get_src_node_id() {
-  return src_node_id;
-}
+  int64_t Arc::get_cost() {
+    return cost;
+  }
 
-uint32_t Arc::get_dst_node_id() {
-  return dst_node_id;
-}
+  uint32_t Arc::get_src_node_id() {
+    return src_node_id;
+  }
 
-Arc* Arc::get_reverse_arc() {
-  return reverse_arc;
-}
+  uint32_t Arc::get_dst_node_id() {
+    return dst_node_id;
+  }
 
-void Arc::set_reverse_arc(Arc* arc) {
-  reverse_arc = arc;
+  Arc* Arc::get_reverse_arc() {
+    return reverse_arc;
+  }
+
+  void Arc::set_reverse_arc(Arc* arc) {
+    reverse_arc = arc;
+  }
+
 }
