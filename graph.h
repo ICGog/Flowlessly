@@ -47,6 +47,7 @@ namespace flowlessly {
     void addSinkAndSource();
     bool orderTopologically(vector<int64_t>& potentials,
                             vector<uint32_t>& ordered);
+    bool checkFlow(const string& flow_file);
 
   private:
     void allocateGraphMemory(uint32_t num_nodes);

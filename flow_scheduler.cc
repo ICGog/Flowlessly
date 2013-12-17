@@ -14,9 +14,10 @@ DEFINE_string(graph_file, "graph.in", "File containing the input graph.");
 DEFINE_string(out_graph_file, "graph.out",
               "File the output graph will be written");
 DEFINE_string(algorithm, "cycle_cancelling",
-              "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path, cost_scaling");
+              "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path, cost_scaling, check_flow");
 DEFINE_int64(alpha_scaling_factor, 2,
              "Value by which Eps is divided in the cost scaling algorithm");
+DEFINE_string(flow_file, "", "File containing the min-cost flow graph.");
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
@@ -81,6 +82,16 @@ int main(int argc, char *argv[]) {
     CostScaling min_cost_flow(graph);
     min_cost_flow.costScaling();
     scale_down = FLAGS_alpha_scaling_factor * graph.get_num_nodes();
+  } else if (!FLAGS_algorithm.compare("check_flow")) {
+    if (!FLAGS_flow_file.compare("")) {
+      LOG(ERROR) << "Please set the flow_file argument";
+      return -1;
+    }
+    if (graph.checkFlow(FLAGS_flow_file)) {
+      LOG(INFO) << "Flow is valid";
+    } else {
+      LOG(ERROR) << "Flow is not valid";
+    }
   } else {
     LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
   }

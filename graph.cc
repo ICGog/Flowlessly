@@ -34,7 +34,7 @@ namespace flowlessly {
         if (vals[0].compare("a") == 0) {
           uint32_t src_node = lexical_cast<uint32_t>(vals[1]);
           uint32_t dst_node = lexical_cast<uint32_t>(vals[2]);
-          int32_t arc_min_flow = lexical_cast<uint32_t>(vals[3]);
+          int32_t arc_min_flow = lexical_cast<int32_t>(vals[3]);
           uint32_t arc_capacity = lexical_cast<uint32_t>(vals[4]);
           int64_t arc_cost = lexical_cast<int64_t>(vals[5]);
           Arc* arc = new Arc(src_node, dst_node, arc_capacity, arc_cost, NULL);
@@ -63,6 +63,66 @@ namespace flowlessly {
       }
     }
     fclose(graph_file);
+  }
+
+  bool Graph::checkFlow(const string& flow_file_path) {
+    FILE* flow_file = NULL;
+    if ((flow_file = fopen(flow_file_path.c_str(), "r")) == NULL) {
+      LOG(ERROR) << "Failed to open flow file: " << flow_file_path;
+      return false;
+    }
+    uint32_t line_num = 0;
+    char line[100];
+    vector<string> vals;
+    int64_t claimed_min_cost;
+    while (!feof(flow_file)) {
+      if (fscanf(flow_file, "%[^\n]%*[\n]", &line[0]) > 0) {
+        ++line_num;
+        boost::split(vals, line, is_any_of(" "), token_compress_on);
+        if (vals[0].compare("f") == 0) {
+          uint32_t src_node = lexical_cast<uint32_t>(vals[1]);
+          uint32_t dst_node = lexical_cast<uint32_t>(vals[2]);
+          int32_t arc_flow = lexical_cast<int32_t>(vals[3]);
+          arcs[src_node][dst_node]->cap =
+            arcs[src_node][dst_node]->initial_cap - arc_flow;
+          nodes_demand[src_node] -= arc_flow;
+          arcs[dst_node][src_node]->cap = arc_flow;
+          nodes_demand[dst_node] += arc_flow;
+        } else if (vals[0].compare("s") == 0) {
+          claimed_min_cost = lexical_cast<int64_t>(vals[1]);
+        } else if (vals[0].compare("c") == 0) {
+          // Comment line. Ignore it.
+        } else {
+          LOG(ERROR) << "The file doesn't respect the DIMACS format on line: "
+                     << line_num;
+        }
+      }
+    }
+    fclose(flow_file);
+    // Check all the demand has been drained.
+    int64_t actual_min_cost = 0;
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      if (nodes_demand[node_id] != 0) {
+        LOG(ERROR) << "The demand has not been drained";
+        return false;
+      }
+      for (map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        if (it->second->cap < it->second->initial_cap) {
+          claimed_min_cost -= (it->second->initial_cap - it->second->cap) *
+            it->second->cost;
+          actual_min_cost += (it->second->initial_cap - it->second->cap) *
+            it->second->cost;
+        }
+      }
+    }
+    LOG(INFO) << "Min cost of the flow graph: " << actual_min_cost;
+    if (claimed_min_cost != 0) {
+      LOG(ERROR) << "The claimed min cost does not represent the cost of the "
+                 << "flow graph";
+      return false;
+    }
+    return true;
   }
 
   void Graph::writeGraph(const string& out_graph_file, int64_t scale_down) {
