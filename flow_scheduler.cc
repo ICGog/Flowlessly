@@ -20,7 +20,7 @@ DEFINE_int64(alpha_scaling_factor, 2,
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
-  string usage("Runs an RA++ job.  Sample usage:\nmusketeer -i test.rap");
+  string usage("Sample usage:\nflow_scheduler -algorithm cost_scaling");
   google::SetUsageMessage(usage);
 
   // Use gflags to parse command line flags

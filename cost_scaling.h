@@ -25,6 +25,7 @@ namespace flowlessly {
     Graph graph_;
     uint32_t relabel_cnt;
     uint32_t pushes_cnt;
+    uint32_t refine_cnt;
 
     void refine(vector<int64_t>& potential, int64_t eps);
     void discharge(queue<uint32_t>& active_nodes, vector<int64_t>& potential,

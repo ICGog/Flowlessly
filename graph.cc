@@ -12,7 +12,7 @@ namespace flowlessly {
   using boost::lexical_cast;
   using boost::token_compress_on;
 
-  void Graph::allocateGraphMemory(uint32_t num_nodes, uint32_t num_arcs) {
+  void Graph::allocateGraphMemory(uint32_t num_nodes) {
     arcs.resize(num_nodes + 1);
     admisible_arcs.resize(num_nodes + 1);
     nodes_demand.resize(num_nodes + 1);
@@ -53,7 +53,7 @@ namespace flowlessly {
         } else if (vals[0].compare("p") == 0) {
           num_nodes = lexical_cast<uint32_t>(vals[2]);
           num_arcs = lexical_cast<uint32_t>(vals[3]);
-          allocateGraphMemory(num_nodes, num_arcs);
+          allocateGraphMemory(num_nodes);
         } else if (vals[0].compare("c") == 0) {
           // Comment line. Ignore it.
         } else {

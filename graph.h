@@ -49,7 +49,7 @@ namespace flowlessly {
                             vector<uint32_t>& ordered);
 
   private:
-    void allocateGraphMemory(uint32_t num_nodes, uint32_t num_arcs);
+    void allocateGraphMemory(uint32_t num_nodes);
 
     uint32_t num_nodes;
     uint32_t num_arcs;
