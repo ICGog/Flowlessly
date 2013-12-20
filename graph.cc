@@ -125,6 +125,19 @@ namespace flowlessly {
     return true;
   }
 
+  bool Graph::checkEpsOptimality(vector<int64_t>& potential, int64_t eps) {
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      for (map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        if (it->second->cap > 0 && it->second->cost + potential[node_id] -
+            potential[it->first] < -eps) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   void Graph::writeGraph(const string& out_graph_file, int64_t scale_down) {
     int64_t min_cost = 0;
     FILE *graph_file = NULL;

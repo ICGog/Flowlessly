@@ -50,17 +50,7 @@ namespace flowlessly {
         if (!has_neg_cost_arc) {
           // Relabel vertex.
           relabel_cnt++;
-          /*
-          int64_t new_pot = numeric_limits<int64_t>::min();
-          for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
-               n_it != arcs[node_id].end(); ++n_it) {
-            if (n_it->second->cap > 0) {
-              new_pot = max(new_pot,
-                            potential[n_it->first] - n_it->second->cost - eps);
-            }
-          }
-          int64_t refine_pot = potential[node_id] - new_pot;
-          */
+          // int64_t refine_pot = getRefinePotential(potential, node_id, eps);
           int64_t refine_pot = eps;
           for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
                n_it != arcs[node_id].end(); ++n_it) {
@@ -471,6 +461,21 @@ namespace flowlessly {
         }
       }
     }
+  }
+
+  // Get the max refine potential that can be used in the relabel.
+  int64_t CostScaling::getRefinePotential(vector<int64_t>& potential,
+                                          uint64_t node_id, int64_t eps) {
+    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+    int64_t new_pot = numeric_limits<int64_t>::min();
+    for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
+         n_it != arcs[node_id].end(); ++n_it) {
+      if (n_it->second->cap > 0) {
+        new_pot = max(new_pot,
+                      potential[n_it->first] - n_it->second->cost - eps);
+      }
+    }
+    return potential[node_id] - new_pot;
   }
 
 }
