@@ -179,6 +179,33 @@ namespace flowlessly {
     LOG(INFO) << "s " << min_cost;
   }
 
+  void Graph::logAdmisibleGraph(vector<int64_t>& potential) {
+    LOG(INFO) << "src dst residual_cap reduced_cost";
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
+      map<uint32_t, Arc*>::iterator end_it = admisible_arcs[node_id].end();
+      for (; it != end_it; ++it) {
+        int64_t reduced_cost = it->second->cost + potential[node_id] -
+          potential[it->first];
+        LOG(INFO) << node_id << " " << it->first << " " << it->second->cap
+                  << " " << reduced_cost;
+      }
+    }
+  }
+
+  void Graph::logResidualGraph() {
+    LOG(INFO) << "src dst residual_cap cost";
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        if (it->second->cap > 0) {
+          LOG(INFO) << node_id << " " << it->first << " "
+                    << it->second->cap << " " << it->second->cost;
+        }
+      }
+    }
+  }
+
   uint32_t Graph::get_num_nodes() {
     return num_nodes;
   }

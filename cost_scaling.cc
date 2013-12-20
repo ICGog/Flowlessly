@@ -21,59 +21,33 @@ namespace flowlessly {
     while (!active_nodes.empty()) {
       uint32_t node_id = active_nodes.front();
       active_nodes.pop();
-      int32_t cur_node_demand = nodes_demand[node_id];
-      while (cur_node_demand > 0) {
+      while (nodes_demand[node_id] > 0) {
         bool has_neg_cost_arc = false;
         for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
              it != admisible_arcs[node_id].end(); ) {
-          has_neg_cost_arc = true;
-          // Push flow.
-          pushes_cnt++;
-          int32_t min_flow = min(cur_node_demand, it->second->cap);
-          it->second->cap -= min_flow;
-          it->second->reverse_arc->cap += min_flow;
-          cur_node_demand -= min_flow;
-          // If node doesn't have any excess then it will be activated.
-          if (nodes_demand[it->first] <= 0 &&
-              nodes_demand[it->first] > -min_flow) {
-            active_nodes.push(it->first);
-          }
-          nodes_demand[it->first] += min_flow;
-          if (it->second->cap == 0) {
-            map<uint32_t, Arc*>::iterator to_erase_it = it;
-            ++it;
-            admisible_arcs[node_id].erase(to_erase_it);
+          map<uint32_t, Arc*>::iterator to_push_it = it;
+          ++it;
+          if (FLAGS_push_lookahead) {
+            bool pushed = pushLookahead(to_push_it->second, active_nodes,
+                                        nodes_demand, potential, eps);
+            if (pushed) {
+              has_neg_cost_arc = true;
+            }
+            if (pushed && to_push_it->second->cap == 0) {
+              admisible_arcs[node_id].erase(to_push_it);
+            }
           } else {
-            ++it;
+            has_neg_cost_arc = true;
+            push(to_push_it->second, active_nodes, nodes_demand);
+            if (to_push_it->second->cap == 0) {
+              admisible_arcs[node_id].erase(to_push_it);
+            }
           }
         }
         if (!has_neg_cost_arc) {
-          // Relabel vertex.
-          relabel_cnt++;
-          // int64_t refine_pot = getRefinePotential(potential, node_id, eps);
-          int64_t refine_pot = eps;
-          for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
-               n_it != arcs[node_id].end(); ++n_it) {
-            if (n_it->second->cap > 0) {
-              int64_t reduced_cost = n_it->second->cost + potential[node_id] -
-                potential[n_it->first];
-              if (reduced_cost >= 0 && reduced_cost < refine_pot) {
-                admisible_arcs[node_id][n_it->first] = n_it->second;
-              }
-            }
-            // Check if the reverse arc is not saturated.
-            if (n_it->second->reverse_arc->cap > 0) {
-              int64_t reduced_cost = -n_it->second->cost +
-                potential[n_it->first] - potential[node_id];
-              if (reduced_cost < 0 && reduced_cost >= -refine_pot) {
-                admisible_arcs[n_it->first].erase(node_id);
-              }
-            }
-          }
-          potential[node_id] -= refine_pot;
+          relabel(potential, node_id, eps);
         }
       }
-      nodes_demand[node_id] = cur_node_demand;
     }
   }
 
@@ -97,7 +71,9 @@ namespace flowlessly {
           admisible_arcs[node_id].erase(to_erase_it);
       }
     }
-    globalPotentialsUpdate(potential, eps);
+    if (FLAGS_global_update) {
+      globalPotentialsUpdate(potential, eps);
+    }
     queue<uint32_t> active_nodes;
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
       if (nodes_demand[node_id] > 0) {
@@ -131,29 +107,30 @@ namespace flowlessly {
     //    Establish a feasible flow x in the network
     //    while eps >= 1/n do
     //      (e, f, p) = refine(e, f p)
-    uint32_t eps_fixing_threshold = pow(FLAGS_alpha_scaling_factor, 5);
-    uint32_t price_refine_threshold = 3;
-    uint32_t eps_iteration_cnt = 0;
     uint32_t num_nodes = graph_.get_num_nodes() + 1;
     vector<int64_t> potential(num_nodes, 0);
+    uint32_t eps_iteration_cnt = 0;
     relabel_cnt = 0;
     pushes_cnt = 0;
     refine_cnt = 0;
     for (int64_t eps = scaleUpCosts() / FLAGS_alpha_scaling_factor; eps >= 1;
          eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
-           1 : eps / FLAGS_alpha_scaling_factor) {
-      ++eps_iteration_cnt;
-      if (eps_iteration_cnt >= price_refine_threshold) {
-        //        if (priceRefinement(potential, eps)) {
-        //          continue;
-        //        }
+           1 : eps / FLAGS_alpha_scaling_factor, ++eps_iteration_cnt) {
+      if (FLAGS_price_refinment &&
+          eps_iteration_cnt >= FLAGS_price_refine_threshold) {
+        if (priceRefinement(potential, eps)) {
+          continue;
+        }
       }
       refine(potential, eps);
-      if (eps <= eps_fixing_threshold) {
-        //        arcsFixing(potential, 2 * (num_nodes - 1) * eps);
+      if (FLAGS_arc_fixing &&
+          eps_iteration_cnt >= FLAGS_arc_fixing_threshold) {
+        arcsFixing(potential, 2 * (num_nodes - 1) * eps);
       }
     }
-    //    arcsUnfixing(potential, numeric_limits<int64_t>::max());
+    if (FLAGS_arc_fixing) {
+      arcsUnfixing(potential, numeric_limits<int64_t>::max());
+    }
     LOG(INFO) << "Num relables: " << relabel_cnt;
     LOG(INFO) << "Num pushes: " << pushes_cnt;
     LOG(INFO) << "Num refines: " << refine_cnt;
@@ -392,58 +369,45 @@ namespace flowlessly {
     }
   }
 
-  void CostScaling::pushLookahead(uint32_t src_node_id, uint32_t dst_node_id) {
-    /*
-    uint32_t dst_node_id = it->first;
-    has_neg_cost_arc = true;
-    // Check if it can be pushed any flow.
-    if (nodes_demand[dst_node_id] < 0 ||
-        admisible_arcs[dst_node_id].size() > 0) {
-      // Push flow.
+  void CostScaling::push(Arc* arc, queue<uint32_t>& active_nodes,
+                         vector<int32_t>& nodes_demand) {
+    pushes_cnt++;
+    int32_t min_flow = min(nodes_demand[arc->src_node_id], arc->cap);
+    arc->cap -= min_flow;
+    arc->reverse_arc->cap += min_flow;
+    if (nodes_demand[arc->dst_node_id] <= 0 &&
+        nodes_demand[arc->dst_node_id] > -min_flow) {
+      active_nodes.push(arc->dst_node_id);
+    }
+    nodes_demand[arc->dst_node_id] += min_flow;
+    nodes_demand[arc->src_node_id] -= min_flow;
+  }
+
+  bool CostScaling::pushLookahead(Arc* arc, queue<uint32_t>& active_nodes,
+                                  vector<int32_t>& nodes_demand,
+                                  vector<int64_t>& potential, int64_t eps) {
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
+    uint32_t adm_size = admisible_arcs[arc->dst_node_id].size();
+    if (nodes_demand[arc->dst_node_id] < 0 ||
+        admisible_arcs[arc->dst_node_id].size() > 0) {
       pushes_cnt++;
-      int32_t min_flow = min(cur_node_demand, it->second->cap);
-      it->second->cap -= min_flow;
-      it->second->reverse_arc->cap += min_flow;
+      int32_t cur_node_demand = nodes_demand[arc->src_node_id];
+      int32_t min_flow = min(cur_node_demand, arc->cap);
+      arc->cap -= min_flow;
+      arc->reverse_arc->cap += min_flow;
       cur_node_demand -= min_flow;
       // If node doesn't have any excess then it will be activated.
-      if (nodes_demand[dst_node_id] <= 0 &&
-          nodes_demand[dst_node_id] > -min_flow) {
-        active_nodes.push(dst_node_id);
+      if (nodes_demand[arc->dst_node_id] <= 0 &&
+          nodes_demand[arc->dst_node_id] > -min_flow) {
+        active_nodes.push(arc->dst_node_id);
       }
-      nodes_demand[dst_node_id] += min_flow;
-      if (it->second->cap == 0) {
-        map<uint32_t, Arc*>::iterator to_erase_it = it;
-        ++it;
-        admisible_arcs[node_id].erase(to_erase_it);
-      } else {
-        ++it;
-      }
+      nodes_demand[arc->dst_node_id] += min_flow;
+      nodes_demand[arc->src_node_id] = cur_node_demand;
+      return true;
     } else {
-      // Relabel dst_node.
-      relabel_cnt++;
-      int64_t refine_pot = eps;
-      for (map<uint32_t, Arc*>::iterator n_it = arcs[dst_node_id].begin();
-           n_it != arcs[dst_node_id].end(); ++n_it) {
-        if (n_it->second->cap > 0) {
-          int64_t reduced_cost = n_it->second->cost +
-            potential[dst_node_id] - potential[n_it->first];
-          if (reduced_cost >= 0 && reduced_cost < refine_pot) {
-            admisible_arcs[dst_node_id][n_it->first] = n_it->second;
-          }
-        }
-        // Check if the reverse arc is not saturated.
-        if (n_it->second->reverse_arc->cap > 0) {
-          int64_t reduced_cost = -n_it->second->cost +
-            potential[n_it->first] - potential[dst_node_id];
-          if (reduced_cost < 0 && reduced_cost >= -refine_pot) {
-            admisible_arcs[n_it->first].erase(dst_node_id);
-          }
-        }
-      }
-      potential[dst_node_id] -= refine_pot;
-      ++it;
+      relabel(potential, arc->dst_node_id, eps);
+      return false;
     }
-    */
   }
 
   void CostScaling::updateAdmisibleGraph(vector<int64_t>& potential) {
@@ -461,6 +425,34 @@ namespace flowlessly {
         }
       }
     }
+  }
+
+  void CostScaling::relabel(vector<int64_t>& potential, uint32_t node_id,
+                       int64_t eps) {
+    relabel_cnt++;
+    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
+    // int64_t refine_pot = getRefinePotential(potential, node_id, eps);
+    int64_t refine_pot = eps;
+    for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
+         n_it != arcs[node_id].end(); ++n_it) {
+      if (n_it->second->cap > 0) {
+        int64_t reduced_cost = n_it->second->cost + potential[node_id] -
+          potential[n_it->first];
+        if (reduced_cost >= 0 && reduced_cost < refine_pot) {
+          admisible_arcs[node_id][n_it->first] = n_it->second;
+        }
+      }
+      // Check if the reverse arc is not saturated.
+      if (n_it->second->reverse_arc->cap > 0) {
+        int64_t reduced_cost = -n_it->second->cost +
+          potential[n_it->first] - potential[node_id];
+        if (reduced_cost < 0 && reduced_cost >= -refine_pot) {
+          admisible_arcs[n_it->first].erase(node_id);
+        }
+      }
+    }
+    potential[node_id] -= refine_pot;
   }
 
   // Get the max refine potential that can be used in the relabel.

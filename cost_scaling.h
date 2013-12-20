@@ -8,6 +8,12 @@
 #include <queue>
 
 DECLARE_int64(alpha_scaling_factor);
+DECLARE_bool(global_update);
+DECLARE_bool(price_refinment);
+DECLARE_bool(push_lookahead);
+DECLARE_bool(arc_fixing);
+DECLARE_int64(arc_fixing_threshold);
+DECLARE_int64(price_refine_threshold);
 
 namespace flowlessly {
 
@@ -35,10 +41,15 @@ namespace flowlessly {
     bool priceRefinement(vector<int64_t>& potential, int64_t eps);
     void arcsFixing(vector<int64_t>& potential, int64_t fix_threshold);
     void arcsUnfixing(vector<int64_t>& potential, int64_t fix_threshold);
-    void pushLookahead(uint32_t src_node_id, uint32_t dst_node_id);
     void updateAdmisibleGraph(vector<int64_t>& potential);
     int64_t getRefinePotential(vector<int64_t>& potential, uint64_t node_id,
                                int64_t eps);
+    void relabel(vector<int64_t>& potential, uint32_t node_id, int64_t eps);
+    bool pushLookahead(Arc* arc, queue<uint32_t>& active_nodes,
+                       vector<int32_t>& nodes_demand,
+                       vector<int64_t>& potential, int64_t eps);
+    void push(Arc* arc, queue<uint32_t>& active_nodes,
+              vector<int32_t>& nodes_demand);
 
   };
 

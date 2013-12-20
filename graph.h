@@ -33,6 +33,8 @@ namespace flowlessly {
 
     void readGraph(const string& graph_file);
     void logGraph();
+    void logAdmisibleGraph(vector<int64_t>& potential);
+    void logResidualGraph();
     void writeGraph(const string& out_graph_file, int64_t scale_down);
     uint32_t get_num_nodes();
     uint32_t get_num_arcs();
