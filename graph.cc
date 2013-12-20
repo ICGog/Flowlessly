@@ -265,18 +265,30 @@ namespace flowlessly {
     single_sink_node.pop_back();
   }
 
-  // Construct a topological order of the graph.
+  // Construct a topological order of the admisible graph.
   bool Graph::orderTopologically(vector<int64_t>& potentials,
                                  vector<uint32_t>& ordered) {
     vector<uint32_t>& source_nodes = get_source_nodes();
+    vector<bool> has_in_vertex(num_nodes + 1, false);
     stack<uint32_t> to_visit;
     // 0 - node not visited.
     // 1 - node visited but didn't finished yet all its subtrees.
     // 2 - node visited completly.
     vector<uint8_t> marked(num_nodes + 1, 0);
-    for (vector<uint32_t>::const_iterator it = source_nodes.begin();
-         it != source_nodes.end(); ++it) {
-      to_visit.push(*it);
+    // Push the nodes with a 0 in-degree.
+    // TODO(ionel): Think how it can be optimized.
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      map<uint32_t, Arc*>::const_iterator it = admisible_arcs[node_id].begin();
+      map<uint32_t, Arc*>::const_iterator end_it =
+        admisible_arcs[node_id].end();
+      for (; it != end_it; ++it) {
+        has_in_vertex[it->first] = true;
+      }
+    }
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      if (!has_in_vertex[node_id]) {
+        to_visit.push(node_id);
+      }
     }
     while (!to_visit.empty()) {
       uint32_t node_id = to_visit.top();
@@ -288,12 +300,12 @@ namespace flowlessly {
       } else {
         marked[node_id] = 1;
         ordered.push_back(node_id);
-        map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
-        map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
+        map<uint32_t, Arc*>::const_iterator it =
+          admisible_arcs[node_id].begin();
+        map<uint32_t, Arc*>::const_iterator end_it =
+          admisible_arcs[node_id].end();
         for (; it != end_it; ++it) {
-          if (it->second->cap > 0 && marked[it->first] == 0 &&
-              it->second->cost + potentials[node_id] -
-              potentials[it->first] < 0) {
+          if (marked[it->first] == 0) {
             to_visit.push(it->first);
           }
         }

@@ -9,6 +9,12 @@ namespace flowlessly {
   using namespace boost::heap;
   using namespace std;
 
+  double getTime() {
+    struct rusage r;
+    getrusage(0, &r);
+    return r.ru_utime.tv_sec + (double)r.ru_utime.tv_usec / 1000000.0;
+  }
+
   void logCosts(const vector<int64_t>& distance,
                 const vector<uint32_t>& predecessor) {
     LOG(INFO) << "Logging graph costs";

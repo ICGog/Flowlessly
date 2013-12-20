@@ -39,9 +39,10 @@ int main(int argc, char *argv[]) {
   FLAGS_logtostderr = true;
   FLAGS_stderrthreshold = 0;
   Graph graph;
+  double read_start_time = getTime();
   graph.readGraph(FLAGS_graph_file);
-  graph.logGraph();
   int64_t scale_down = 1;
+  double algo_start_time = getTime();
   if (!FLAGS_algorithm.compare("bellman_ford")) {
     LOG(INFO) << "------------ BellmanFord ------------";
     uint32_t num_nodes = graph.get_num_nodes() + 1;
@@ -96,6 +97,12 @@ int main(int argc, char *argv[]) {
     LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
+  double algo_end_time = getTime();
   graph.writeGraph(FLAGS_out_graph_file, scale_down);
+  double write_end_time = getTime();
+  LOG(INFO) << "Read time: " << algo_start_time - read_start_time;
+  LOG(INFO) << "Algorithm run time: " << algo_end_time - algo_start_time;
+  LOG(INFO) << "Write time: " << write_end_time - algo_end_time;
+  LOG(INFO) << "Total time: " << write_end_time - read_start_time;
   return 0;
 }

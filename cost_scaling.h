@@ -36,6 +36,7 @@ namespace flowlessly {
     void arcsFixing(vector<int64_t>& potential, int64_t fix_threshold);
     void arcsUnfixing(vector<int64_t>& potential, int64_t fix_threshold);
     void pushLookahead(uint32_t src_node_id, uint32_t dst_node_id);
+    void updateAdmisibleGraph(vector<int64_t>& potential);
 
   };
 
