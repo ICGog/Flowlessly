@@ -54,6 +54,8 @@ namespace flowlessly {
 
   private:
     void allocateGraphMemory(uint32_t num_nodes);
+    bool visitTopologically(uint32_t node_id, vector<uint8_t>& marked,
+                            list<uint32_t>& ordered);
 
     uint32_t num_nodes;
     uint32_t num_arcs;

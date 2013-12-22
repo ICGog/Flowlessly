@@ -19,7 +19,7 @@ DEFINE_int64(alpha_scaling_factor, 2,
              "Value by which Eps is divided in the cost scaling algorithm");
 DEFINE_string(flow_file, "", "File containing the min-cost flow graph");
 DEFINE_bool(global_update, true, "Activate global update heuristic");
-DEFINE_bool(price_refinment, false, "Activate price refinement heuristic");
+DEFINE_bool(price_refinement, false, "Activate price refinement heuristic");
 DEFINE_bool(push_lookahead, true, "Activate push lookahead heuristic");
 DEFINE_bool(arc_fixing, true, "Activate arc fixing heuristic");
 DEFINE_int64(arc_fixing_threshold, 3, "After how many refines to start fixing arcs");

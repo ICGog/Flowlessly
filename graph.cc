@@ -309,48 +309,44 @@ namespace flowlessly {
   bool Graph::orderTopologically(vector<int64_t>& potentials,
                                  vector<uint32_t>& ordered) {
     vector<uint32_t>& source_nodes = get_source_nodes();
-    vector<bool> has_in_vertex(num_nodes + 1, false);
     stack<uint32_t> to_visit;
     // 0 - node not visited.
     // 1 - node visited but didn't finished yet all its subtrees.
     // 2 - node visited completly.
     vector<uint8_t> marked(num_nodes + 1, 0);
-    // Push the nodes with a 0 in-degree.
-    // TODO(ionel): Think how it can be optimized.
+    list<uint32_t> ordered_list;
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
-      map<uint32_t, Arc*>::const_iterator it = admisible_arcs[node_id].begin();
+      if (marked[node_id] == 0) {
+        if (!visitTopologically(node_id, marked, ordered_list)) {
+          return false;
+        }
+      }
+    }
+    for (list<uint32_t>::iterator it = ordered_list.begin();
+         it != ordered_list.end(); ++it) {
+      ordered.push_back(*it);
+    }
+    return true;
+  }
+
+  bool Graph::visitTopologically(uint32_t node_id, vector<uint8_t>& marked,
+                                 list<uint32_t>& ordered) {
+    if (marked[node_id] == 1) {
+      return false;
+    } else {
+      marked[node_id] = 1;
+      map<uint32_t, Arc*>::const_iterator it =
+        admisible_arcs[node_id].begin();
       map<uint32_t, Arc*>::const_iterator end_it =
         admisible_arcs[node_id].end();
       for (; it != end_it; ++it) {
-        has_in_vertex[it->first] = true;
-      }
-    }
-    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
-      if (!has_in_vertex[node_id]) {
-        to_visit.push(node_id);
-      }
-    }
-    while (!to_visit.empty()) {
-      uint32_t node_id = to_visit.top();
-      to_visit.pop();
-      // If marked temporarly then we have a cycle.
-      if (marked[node_id] == 1) {
-        // Return partial result.
-        return false;
-      } else {
-        marked[node_id] = 1;
-        ordered.push_back(node_id);
-        map<uint32_t, Arc*>::const_iterator it =
-          admisible_arcs[node_id].begin();
-        map<uint32_t, Arc*>::const_iterator end_it =
-          admisible_arcs[node_id].end();
-        for (; it != end_it; ++it) {
-          if (marked[it->first] == 0) {
-            to_visit.push(it->first);
-          }
+        if (marked[it->first] != 2 &&
+            !visitTopologically(it->first, marked, ordered)) {
+          return false;
         }
-        marked[node_id] = 2;
       }
+      marked[node_id] = 2;
+      ordered.push_front(node_id);
     }
     return true;
   }

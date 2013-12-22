@@ -9,7 +9,7 @@
 
 DECLARE_int64(alpha_scaling_factor);
 DECLARE_bool(global_update);
-DECLARE_bool(price_refinment);
+DECLARE_bool(price_refinement);
 DECLARE_bool(push_lookahead);
 DECLARE_bool(arc_fixing);
 DECLARE_int64(arc_fixing_threshold);

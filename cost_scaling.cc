@@ -116,7 +116,7 @@ namespace flowlessly {
     for (int64_t eps = scaleUpCosts() / FLAGS_alpha_scaling_factor; eps >= 1;
          eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
            1 : eps / FLAGS_alpha_scaling_factor, ++eps_iteration_cnt) {
-      if (FLAGS_price_refinment &&
+      if (FLAGS_price_refinement &&
           eps_iteration_cnt >= FLAGS_price_refine_threshold) {
         if (priceRefinement(potential, eps)) {
           continue;
@@ -222,8 +222,6 @@ namespace flowlessly {
     updateAdmisibleGraph(potential);
   }
 
-  // TODO(ionel): I suspect that this is not working because the input graph
-  // is not eps optimal.
   bool CostScaling::priceRefinement(vector<int64_t>& potential, int64_t eps) {
     uint32_t num_nodes = graph_.get_num_nodes();
     uint32_t max_rank = FLAGS_alpha_scaling_factor * num_nodes;
@@ -238,15 +236,17 @@ namespace flowlessly {
     for (; graph_.orderTopologically(potential, ordered_nodes);
          ordered_nodes.clear()) {
       int64_t top_rank = 0;
+      fill(distance.begin(), distance.end(), 0);
       for (vector<uint32_t>::iterator node_it = ordered_nodes.begin();
            node_it != ordered_nodes.end(); ++node_it) {
-        map<uint32_t, Arc*>::const_iterator it = admisible_arcs[*node_it].begin();
+        map<uint32_t, Arc*>::const_iterator it =
+          admisible_arcs[*node_it].begin();
         map<uint32_t, Arc*>::const_iterator end_it =
           admisible_arcs[*node_it].end();
         int64_t d_node_it = distance[*node_it];
         for (; it != end_it; ++it) {
-          int64_t reduced_cost = ceil((it->second->cost + potential[*node_it] -
-                                       potential[it->first]) / eps);
+          int64_t reduced_cost = (it->second->cost + potential[*node_it] -
+                                  potential[it->first] + 0.5) / eps;
           if (d_node_it + reduced_cost < distance[it->first]) {
             distance[it->first] = d_node_it + reduced_cost;
           }
@@ -278,11 +278,11 @@ namespace flowlessly {
                 potential[it->first];
               int64_t old_distance = distance[it->first];
               int64_t new_distance = old_distance;
-              if (distance[node_id] < old_distance) {
+              if (bucket_index < old_distance) {
                 if (reduced_cost < 0) {
-                  new_distance = distance[node_id];
+                  new_distance = bucket_index;
                 } else {
-                  new_distance = distance[node_id] + ceil(reduced_cost / eps);
+                  new_distance = bucket_index + (reduced_cost + 0.5) / eps;
                 }
                 if (new_distance < old_distance) {
                   distance[it->first] = new_distance;
