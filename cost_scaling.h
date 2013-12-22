@@ -41,7 +41,8 @@ namespace flowlessly {
     bool priceRefinement(vector<int64_t>& potential, int64_t eps);
     void arcsFixing(vector<int64_t>& potential, int64_t fix_threshold);
     void arcsUnfixing(vector<int64_t>& potential, int64_t fix_threshold);
-    void updateAdmisibleGraph(vector<int64_t>& potential);
+    void updateAdmisibleGraph(vector<uint32_t>& updated_nodes,
+                              vector<int64_t>& potential);
     int64_t getRefinePotential(vector<int64_t>& potential, uint64_t node_id,
                                int64_t eps);
     void relabel(vector<int64_t>& potential, uint32_t node_id, int64_t eps);

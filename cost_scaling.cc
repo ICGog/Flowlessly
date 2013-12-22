@@ -212,14 +212,15 @@ namespace flowlessly {
         }
       }
     }
-
+    vector<uint32_t> updated_nodes;
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
       uint32_t min_rank = min(rank[node_id], bucket_index);
       if (min_rank > 0) {
         potential[node_id] -= eps * min_rank;
+        updated_nodes.push_back(node_id);
       }
     }
-    updateAdmisibleGraph(potential);
+    updateAdmisibleGraph(updated_nodes, potential);
   }
 
   bool CostScaling::priceRefinement(vector<int64_t>& potential, int64_t eps) {
@@ -306,10 +307,14 @@ namespace flowlessly {
           }
         }
       }
+      vector<uint32_t> updated_nodes;
       for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
         potential[node_id] += distance[node_id] * eps;
+        if (distance[node_id] != 0) {
+          updated_nodes.push_back(node_id);
+        }
       }
-      updateAdmisibleGraph(potential);
+      updateAdmisibleGraph(updated_nodes, potential);
     }
     return false;
   }
@@ -386,6 +391,7 @@ namespace flowlessly {
   bool CostScaling::pushLookahead(Arc* arc, queue<uint32_t>& active_nodes,
                                   vector<int32_t>& nodes_demand,
                                   vector<int64_t>& potential, int64_t eps) {
+
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
     uint32_t adm_size = admisible_arcs[arc->dst_node_id].size();
     if (nodes_demand[arc->dst_node_id] < 0 ||
@@ -410,18 +416,26 @@ namespace flowlessly {
     }
   }
 
-  void CostScaling::updateAdmisibleGraph(vector<int64_t>& potential) {
-    uint32_t num_nodes = graph_.get_num_nodes();
+  void CostScaling::updateAdmisibleGraph(vector<uint32_t>& updated_nodes,
+                                         vector<int64_t>& potential) {
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
-      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
-           it != arcs[node_id].end(); ++it) {
-        if (it->second->cost + potential[node_id] -
+    for (vector<uint32_t>::iterator node_it = updated_nodes.begin();
+         node_it != updated_nodes.end(); ++node_it) {
+      for (map<uint32_t, Arc*>::iterator it = arcs[*node_it].begin();
+           it != arcs[*node_it].end(); ++it) {
+        if (it->second->cost + potential[*node_it] -
             potential[it->first] < 0 && it->second->cap > 0) {
-          admisible_arcs[node_id][it->first] = it->second;
+          admisible_arcs[*node_it][it->first] = it->second;
         } else {
-          admisible_arcs[node_id].erase(it->first);
+          admisible_arcs[*node_it].erase(it->first);
+        }
+        Arc* rev_arc = it->second->reverse_arc;
+        if (rev_arc->cost + potential[it->first] - potential[*node_it] < 0 &&
+            rev_arc->cap > 0) {
+          admisible_arcs[it->first][*node_it] = rev_arc;
+        } else {
+          admisible_arcs[it->first].erase(*node_it);
         }
       }
     }
@@ -432,8 +446,8 @@ namespace flowlessly {
     relabel_cnt++;
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    // int64_t refine_pot = getRefinePotential(potential, node_id, eps);
-    int64_t refine_pot = eps;
+    int64_t refine_pot = getRefinePotential(potential, node_id, eps);
+    //    int64_t refine_pot = eps;
     for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
          n_it != arcs[node_id].end(); ++n_it) {
       if (n_it->second->cap > 0) {
