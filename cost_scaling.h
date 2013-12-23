@@ -32,6 +32,15 @@ namespace flowlessly {
     uint32_t relabel_cnt;
     uint32_t pushes_cnt;
     uint32_t refine_cnt;
+    double refine_time;
+    double discharge_time;
+    double global_update_time;
+    double price_refine_time;
+    double arcs_fixing_time;
+    double arcs_unfixing_time;
+    double relabel_time;
+    double push_time;
+    double update_admisible_time;
 
     void refine(vector<int64_t>& potential, int64_t eps);
     void discharge(queue<uint32_t>& active_nodes, vector<int64_t>& potential,
