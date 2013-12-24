@@ -380,6 +380,7 @@ namespace flowlessly {
       arcs[it->first].erase(node_id);
       admisible_arcs[node_id].erase(it->first);
       admisible_arcs[it->first].erase(node_id);
+      --num_arcs;
       delete arc->reverse_arc;
       delete arc;
     }
@@ -402,14 +403,21 @@ namespace flowlessly {
   }
 
   uint32_t Graph::addNode(uint32_t node_id, int32_t node_demand,
+                          int64_t node_potential,
                           vector<Arc*>& arcs_from_node) {
     uint32_t new_node_id;
     if (deleted_nodes.empty()) {
-      new_node_id = num_nodes + 1;
-      // TODO(ionel): Resize arrays.
+      ++num_nodes;
+      new_node_id = num_nodes;
+      potential.push_back(node_potential);
+      nodes_demand.push_back(node_demand);
+      arcs.push_back(map<uint32_t, Arc*>());
+      admisible_arcs.push_back(map<uint32_t, Arc*>());
     } else {
       new_node_id = deleted_nodes.front();
       deleted_nodes.pop_front();
+      potential[new_node_id] = node_potential;
+      nodes_demand[new_node_id] = node_demand;
     }
     // TODO(ionel): Update fixed arcs.
     for (vector<Arc*>::iterator it = arcs_from_node.begin();
@@ -419,9 +427,16 @@ namespace flowlessly {
       arc->reverse_arc->dst_node_id = new_node_id;
       arcs[new_node_id][arc->dst_node_id] = arc;
       arcs[arc->dst_node_id][new_node_id] = arc->reverse_arc;
-      // TODO(ionel): Update admisible graph.
+      ++num_arcs;
+      int64_t reduced_cost = arc->cost + potential[arc->src_node_id] -
+        potential[arc->dst_node_id];
+      if (reduced_cost < 0 && arc->cap > 0) {
+        admisible_arcs[arc->src_node_id][arc->dst_node_id] = arc;
+      }
+      if (-reduced_cost < 0 && arc->reverse_arc->cap > 0) {
+        admisible_arcs[arc->dst_node_id][arc->src_node_id] = arc->reverse_arc;
+      }
     }
-    nodes_demand[new_node_id] = node_demand;
     if (nodes_demand[new_node_id] > 0) {
       source_nodes.insert(new_node_id);
     } else if (nodes_demand[new_node_id] < 0) {

@@ -57,7 +57,7 @@ namespace flowlessly {
     void removeNode(uint32_t node_id);
     void removeNodes(vector<uint32_t>& nodes_id);
     uint32_t addNode(uint32_t node_id, int32_t node_demand,
-                     vector<Arc*>& arcs_from_node);
+                     int64_t node_potential, vector<Arc*>& arcs_from_node);
 
   private:
     void allocateGraphMemory(uint32_t num_nodes);
