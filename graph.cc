@@ -16,6 +16,7 @@ namespace flowlessly {
     arcs.resize(num_nodes + 1);
     admisible_arcs.resize(num_nodes + 1);
     nodes_demand.resize(num_nodes + 1);
+    potential.resize(num_nodes + 1);
   }
 
   void Graph::readGraph(const string& graph_file_path) {
@@ -46,9 +47,9 @@ namespace flowlessly {
           uint32_t node_id = lexical_cast<uint32_t>(vals[1]);
           nodes_demand[node_id] = lexical_cast<int32_t>(vals[2]);
           if (nodes_demand[node_id] > 0) {
-            source_nodes.push_back(node_id);
+            source_nodes.insert(node_id);
           } else if (nodes_demand[node_id] < 0) {
-            sink_nodes.push_back(node_id);
+            sink_nodes.insert(node_id);
           }
         } else if (vals[0].compare("p") == 0) {
           num_nodes = lexical_cast<uint32_t>(vals[2]);
@@ -125,7 +126,7 @@ namespace flowlessly {
     return true;
   }
 
-  bool Graph::checkEpsOptimality(vector<int64_t>& potential, int64_t eps) {
+  bool Graph::checkEpsOptimality(int64_t eps) {
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
       for (map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
            it != arcs[node_id].end(); ++it) {
@@ -179,7 +180,7 @@ namespace flowlessly {
     LOG(INFO) << "s " << min_cost;
   }
 
-  void Graph::logAdmisibleGraph(vector<int64_t>& potential) {
+  void Graph::logAdmisibleGraph() {
     LOG(INFO) << "src dst residual_cap reduced_cost";
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
       map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
@@ -226,7 +227,7 @@ namespace flowlessly {
     return fixed_arcs;
   }
 
-  vector<uint32_t>& Graph::get_source_nodes() {
+  set<uint32_t>& Graph::get_source_nodes() {
     if (added_sink_and_source) {
       return single_source_node;
     } else {
@@ -234,7 +235,7 @@ namespace flowlessly {
     }
   }
 
-  vector<uint32_t>& Graph::get_sink_nodes() {
+  set<uint32_t>& Graph::get_sink_nodes() {
     if (added_sink_and_source) {
       return single_sink_node;
     } else {
@@ -246,6 +247,10 @@ namespace flowlessly {
     return nodes_demand;
   }
 
+  vector<int64_t>& Graph::get_potential() {
+    return potential;
+  }
+
   bool Graph::hasSinkAndSource() {
     return added_sink_and_source;
   }
@@ -255,9 +260,9 @@ namespace flowlessly {
     num_nodes += 2;
     arcs.resize(num_nodes + 1);
     nodes_demand.resize(num_nodes + 1);
-    single_source_node.push_back(num_nodes - 1);
-    single_sink_node.push_back(num_nodes);
-    for (vector<uint32_t>::iterator it = source_nodes.begin();
+    single_source_node.insert(num_nodes - 1);
+    single_sink_node.insert(num_nodes);
+    for (set<uint32_t>::iterator it = source_nodes.begin();
          it != source_nodes.end(); ++it) {
       Arc* arc = new Arc(num_nodes - 1, *it, nodes_demand[*it], 0, NULL);
       Arc* reverse_arc = new Arc(*it, num_nodes - 1, 0, 0, arc);
@@ -267,7 +272,7 @@ namespace flowlessly {
       nodes_demand[num_nodes - 1] += nodes_demand[*it];
       nodes_demand[*it] = 0;
     }
-    for (vector<uint32_t>::iterator it = sink_nodes.begin();
+    for (set<uint32_t>::iterator it = sink_nodes.begin();
          it != sink_nodes.end(); ++it) {
       Arc* arc = new Arc(num_nodes, *it, 0, 0, NULL);
       Arc* reverse_arc = new Arc(*it, num_nodes, -nodes_demand[*it], 0, arc);
@@ -285,11 +290,11 @@ namespace flowlessly {
     for (; it != end_it; ++it) {
       nodes_demand[it->first] += it->second->initial_cap - it->second->cap;
     }
-    for (vector<uint32_t>::iterator it = source_nodes.begin();
+    for (set<uint32_t>::iterator it = source_nodes.begin();
          it != source_nodes.end(); ++it) {
       arcs[*it].erase(num_nodes - 1);
     }
-    for (vector<uint32_t>::iterator it = sink_nodes.begin();
+    for (set<uint32_t>::iterator it = sink_nodes.begin();
          it != sink_nodes.end(); ++it) {
       Arc* arc = arcs[*it][num_nodes];
       nodes_demand[*it] = -arc->cap;
@@ -301,14 +306,12 @@ namespace flowlessly {
     arcs.pop_back();
     nodes_demand.pop_back();
     nodes_demand.pop_back();
-    single_source_node.pop_back();
-    single_sink_node.pop_back();
+    single_source_node.clear();
+    single_sink_node.clear();
   }
 
   // Construct a topological order of the admisible graph.
-  bool Graph::orderTopologically(vector<int64_t>& potentials,
-                                 vector<uint32_t>& ordered) {
-    vector<uint32_t>& source_nodes = get_source_nodes();
+  bool Graph::orderTopologically(vector<uint32_t>& ordered) {
     stack<uint32_t> to_visit;
     // 0 - node not visited.
     // 1 - node visited but didn't finished yet all its subtrees.
@@ -349,6 +352,82 @@ namespace flowlessly {
       ordered.push_front(node_id);
     }
     return true;
+  }
+
+  void Graph::removeNode(uint32_t node_id) {
+    // Delete arcs in which node_id appears from the list of fixed
+    // arcs.
+
+    // TODO(ionel): Implement this. Currently we have to go over the entire
+    // fixed_arc list. This is to inefficient.
+
+    // Delete arcs for the arcs and admisible arcs.
+    for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+         it != arcs[node_id].end(); ) {
+      Arc* arc = it->second;
+      if (arc->cap < arc->initial_cap) {
+        // Forward arc.
+        nodes_demand[arc->src_node_id] += arc->initial_cap - arc->cap;
+        nodes_demand[arc->dst_node_id] -= arc->initial_cap - arc->cap;
+      } else {
+        // Reverse arc.
+        nodes_demand[arc->src_node_id] -= arc->cap;
+        nodes_demand[arc->dst_node_id] += arc->cap;
+      }
+      map<uint32_t, Arc*>::iterator to_erase_it = it;
+      ++it;
+      arcs[node_id].erase(to_erase_it);
+      arcs[it->first].erase(node_id);
+      admisible_arcs[node_id].erase(it->first);
+      admisible_arcs[it->first].erase(node_id);
+      delete arc->reverse_arc;
+      delete arc;
+    }
+    // Delete node from sink or source nodes set.
+    if (nodes_demand[node_id] > 0) {
+      source_nodes.erase(node_id);
+    } else if (nodes_demand[node_id] < 0) {
+      sink_nodes.erase(node_id);
+    }
+    deleted_nodes.push_back(node_id);
+    nodes_demand[node_id] = 0;
+    potential[node_id] = 0;
+  }
+
+  void Graph::removeNodes(vector<uint32_t>& node_ids) {
+    for (vector<uint32_t>::iterator it = node_ids.begin();
+         it != node_ids.end(); ++it) {
+      removeNode(*it);
+    }
+  }
+
+  uint32_t Graph::addNode(uint32_t node_id, int32_t node_demand,
+                          vector<Arc*>& arcs_from_node) {
+    uint32_t new_node_id;
+    if (deleted_nodes.empty()) {
+      new_node_id = num_nodes + 1;
+      // TODO(ionel): Resize arrays.
+    } else {
+      new_node_id = deleted_nodes.front();
+      deleted_nodes.pop_front();
+    }
+    // TODO(ionel): Update fixed arcs.
+    for (vector<Arc*>::iterator it = arcs_from_node.begin();
+         it != arcs_from_node.end(); ++it) {
+      Arc* arc = (*it);
+      arc->src_node_id = new_node_id;
+      arc->reverse_arc->dst_node_id = new_node_id;
+      arcs[new_node_id][arc->dst_node_id] = arc;
+      arcs[arc->dst_node_id][new_node_id] = arc->reverse_arc;
+      // TODO(ionel): Update admisible graph.
+    }
+    nodes_demand[new_node_id] = node_demand;
+    if (nodes_demand[new_node_id] > 0) {
+      source_nodes.insert(new_node_id);
+    } else if (nodes_demand[new_node_id] < 0) {
+      sink_nodes.insert(new_node_id);
+    }
+    return new_node_id;
   }
 
 }

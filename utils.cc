@@ -34,8 +34,8 @@ namespace flowlessly {
     vector<int32_t> visited(num_nodes, 0);
     vector<uint32_t> predecessor(num_nodes, 0);
     // Works with the assumption that there is only a sink and a source node.
-    uint32_t source_node = graph.get_source_nodes()[0];
-    uint32_t sink_node = graph.get_sink_nodes()[0];
+    uint32_t source_node = *(graph.get_source_nodes().begin());
+    uint32_t sink_node = *(graph.get_sink_nodes().begin());
     bool has_path = true;
     while (has_path) {
       has_path = false;
@@ -78,11 +78,11 @@ namespace flowlessly {
     }
   }
 
-  void BellmanFord(Graph& graph, const vector<uint32_t>& source_nodes,
+  void BellmanFord(Graph& graph, const set<uint32_t>& source_nodes,
                    vector<int64_t>& distance, vector<uint32_t>& predecessor) {
     uint32_t num_nodes = graph.get_num_nodes() + 1;
     const vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
-    for (vector<uint32_t>::const_iterator it = source_nodes.begin();
+    for (set<uint32_t>::const_iterator it = source_nodes.begin();
          it != source_nodes.end(); ++it) {
       distance[*it] = 0;
     }
@@ -106,7 +106,7 @@ namespace flowlessly {
     }
   }
 
-  void DijkstraSimple(Graph& graph, const vector<uint32_t>& source_nodes,
+  void DijkstraSimple(Graph& graph, const set<uint32_t>& source_nodes,
                       vector<int64_t>& distance,
                       vector<uint32_t>& predecessor) {
     uint32_t num_nodes = graph.get_num_nodes() + 1;
@@ -114,7 +114,7 @@ namespace flowlessly {
     const vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
     // Works with the assumption that all the elements of distance are
     // already set to INF.
-    for (vector<uint32_t>::const_iterator it = source_nodes.begin();
+    for (set<uint32_t>::const_iterator it = source_nodes.begin();
          it != source_nodes.end(); ++it) {
       distance[*it] = 0;
     }
@@ -141,7 +141,7 @@ namespace flowlessly {
     }
   }
 
-  void DijkstraOptimized(Graph& graph, const vector<uint32_t>& source_nodes,
+  void DijkstraOptimized(Graph& graph, const set<uint32_t>& source_nodes,
                          vector<int64_t>& distance,
                          vector<uint32_t>& predecessor) {
     uint32_t num_nodes = graph.get_num_nodes() + 1;
@@ -154,7 +154,7 @@ namespace flowlessly {
     handles[num_nodes];
     // Works with the assumption that all the elements of distance are
     // already set to INF.
-    for (vector<uint32_t>::const_iterator it = source_nodes.begin();
+    for (set<uint32_t>::const_iterator it = source_nodes.begin();
          it != source_nodes.end(); ++it) {
       distance[*it] = 0;
       visited[*it] = true;

@@ -17,7 +17,7 @@ namespace flowlessly {
   private:
     Graph graph_;
 
-    void reduceCost(vector<int64_t>& potential);
+    void reduceCost(vector<int64_t>& distance);
 
   };
 

@@ -42,22 +42,19 @@ namespace flowlessly {
     double push_time;
     double update_admisible_time;
 
-    void refine(vector<int64_t>& potential, int64_t eps);
-    void discharge(queue<uint32_t>& active_nodes, vector<int64_t>& potential,
-                   vector<int32_t>& nodes_demand, int64_t eps);
+    void refine(int64_t eps);
+    void discharge(queue<uint32_t>& active_nodes, vector<int32_t>& nodes_demand,
+                   int64_t eps);
     int64_t scaleUpCosts();
-    void globalPotentialsUpdate(vector<int64_t>& potential, int64_t eps);
-    bool priceRefinement(vector<int64_t>& potential, int64_t eps);
-    void arcsFixing(vector<int64_t>& potential, int64_t fix_threshold);
-    void arcsUnfixing(vector<int64_t>& potential, int64_t fix_threshold);
-    void updateAdmisibleGraph(vector<uint32_t>& updated_nodes,
-                              vector<int64_t>& potential);
-    int64_t getRefinePotential(vector<int64_t>& potential, uint64_t node_id,
-                               int64_t eps);
-    void relabel(vector<int64_t>& potential, uint32_t node_id, int64_t eps);
+    void globalPotentialsUpdate(int64_t eps);
+    bool priceRefinement(int64_t eps);
+    void arcsFixing(int64_t fix_threshold);
+    void arcsUnfixing(int64_t fix_threshold);
+    void updateAdmisibleGraph(vector<uint32_t>& updated_nodes);
+    int64_t getRefinePotential(uint64_t node_id, int64_t eps);
+    void relabel(uint32_t node_id, int64_t eps);
     bool pushLookahead(Arc* arc, queue<uint32_t>& active_nodes,
-                       vector<int32_t>& nodes_demand,
-                       vector<int64_t>& potential, int64_t eps);
+                       vector<int32_t>& nodes_demand, int64_t eps);
     void push(Arc* arc, queue<uint32_t>& active_nodes,
               vector<int32_t>& nodes_demand);
 

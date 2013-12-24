@@ -8,7 +8,7 @@ namespace flowlessly {
 
   using namespace std;
 
-  void SuccessiveShortest::reduceCost(vector<int64_t>& potential) {
+  void SuccessiveShortest::reduceCost(vector<int64_t>& distance) {
     uint32_t num_nodes = graph_.get_num_nodes() + 1;
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
@@ -17,7 +17,7 @@ namespace flowlessly {
       for (; it != end_it; ++it) {
         Arc* arc = it->second;
         if (arc->cap > 0) {
-          arc->cost += potential[node_id] - potential[it->first];
+          arc->cost += distance[node_id] - distance[it->first];
         } else {
           arc->cost = 0;
         }
@@ -41,20 +41,20 @@ namespace flowlessly {
     vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
     // Works with the assumption that there's only a sink and a source node.
-    vector<uint32_t> source_node = graph_.get_source_nodes();
-    uint32_t sink_node = graph_.get_sink_nodes()[0];
+    set<uint32_t> source_node = graph_.get_source_nodes();
+    uint32_t sink_node = *(graph_.get_sink_nodes().begin());
     do {
       fill(distance.begin(), distance.end(), numeric_limits<int64_t>::max());
       fill(predecessor.begin(), predecessor.end(), 0);
       BellmanFord(graph_, source_node, distance, predecessor);
       if (distance[sink_node] < numeric_limits<int64_t>::max()) {
         int32_t min_flow = numeric_limits<int32_t>::max();
-        for (uint32_t cur_node = sink_node; cur_node != source_node[0];
+        for (uint32_t cur_node = sink_node; cur_node != *(source_node.begin());
              cur_node = predecessor[cur_node]) {
           Arc* arc = arcs[predecessor[cur_node]][cur_node];
           min_flow = min(min_flow, arc->cap);
         }
-        for (uint32_t cur_node = sink_node; cur_node != source_node[0];
+        for (uint32_t cur_node = sink_node; cur_node != *(source_node.begin());
              cur_node = predecessor[cur_node]) {
           Arc* arc = arcs[predecessor[cur_node]][cur_node];
           arc->cap -= min_flow;
@@ -85,8 +85,8 @@ namespace flowlessly {
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
     // Works with the assumption that there's only a source and sink node.
-    vector<uint32_t>& source_node = graph_.get_source_nodes();
-    uint32_t sink_node = graph_.get_sink_nodes()[0];
+    set<uint32_t>& source_node = graph_.get_source_nodes();
+    uint32_t sink_node = *(graph_.get_sink_nodes().begin());
     BellmanFord(graph_, source_node, distance, predecessor);
     reduceCost(distance);
     uint32_t iteration_cnt = 0;
@@ -100,12 +100,12 @@ namespace flowlessly {
       if (distance[sink_node] < numeric_limits<int64_t>::max()) {
         reduceCost(distance);
         int32_t min_flow = numeric_limits<int32_t>::max();
-        for (uint32_t cur_node = sink_node; cur_node != source_node[0];
+        for (uint32_t cur_node = sink_node; cur_node != *(source_node.begin());
              cur_node = predecessor[cur_node]) {
           Arc* arc = arcs[predecessor[cur_node]][cur_node];
           min_flow = min(min_flow, arc->cap);
         }
-        for (uint32_t cur_node = sink_node; cur_node != source_node[0];
+        for (uint32_t cur_node = sink_node; cur_node != *(source_node.begin());
              cur_node = predecessor[cur_node]) {
           Arc* arc = arcs[predecessor[cur_node]][cur_node];
           arc->cap -= min_flow;
