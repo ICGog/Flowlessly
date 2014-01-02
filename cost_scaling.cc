@@ -84,24 +84,6 @@ namespace flowlessly {
     refine_time += getTime();
   }
 
-  // Scales up costs by alpha * num_nodes
-  // It returns the value from where eps should start.
-  int64_t CostScaling::scaleUpCosts() {
-    uint32_t num_nodes = graph_.get_num_nodes();
-    const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    int64_t max_cost_arc = numeric_limits<int64_t>::min();
-    int64_t scale_up = FLAGS_alpha_scaling_factor * num_nodes;
-    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
-      for (map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
-           it != arcs[node_id].end(); ++it) {
-        it->second->cost *= scale_up;
-        max_cost_arc = max(max_cost_arc, it->second->cost);
-      }
-    }
-    return pow(FLAGS_alpha_scaling_factor,
-               ceil(log(max_cost_arc) / log(FLAGS_alpha_scaling_factor)));
-  }
-
   void CostScaling::costScaling() {
     //    eps = max arc cost
     //    potential(v) = 0
@@ -113,7 +95,8 @@ namespace flowlessly {
     relabel_cnt = 0;
     pushes_cnt = 0;
     refine_cnt = 0;
-    for (int64_t eps = scaleUpCosts() / FLAGS_alpha_scaling_factor; eps >= 1;
+    for (int64_t eps = graph_.scaleUpCosts(FLAGS_alpha_scaling_factor * num_nodes) /
+           FLAGS_alpha_scaling_factor; eps >= 1;
          eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
            1 : eps / FLAGS_alpha_scaling_factor, ++eps_iteration_cnt) {
       if (FLAGS_price_refinement &&
@@ -125,11 +108,11 @@ namespace flowlessly {
       refine(eps);
       if (FLAGS_arc_fixing &&
           eps_iteration_cnt >= FLAGS_arc_fixing_threshold) {
-        arcsFixing(2 * (num_nodes - 1) * eps);
+        graph_.arcsFixing(2 * (num_nodes - 1) * eps);
       }
     }
     if (FLAGS_arc_fixing) {
-      arcsUnfixing(numeric_limits<int64_t>::max());
+      graph_.arcsUnfixing(numeric_limits<int64_t>::max());
     }
     LOG(INFO) << "Num relables: " << relabel_cnt;
     LOG(INFO) << "Num pushes: " << pushes_cnt;
@@ -138,8 +121,8 @@ namespace flowlessly {
     LOG(INFO) << "DISCHARGE TIME: " << discharge_time;
     LOG(INFO) << "GLOBAL UPDATE TIME: " << global_update_time;
     LOG(INFO) << "PRICE REFINE TIME: " << price_refine_time;
-    LOG(INFO) << "ARCS FIXING TIME: " << arcs_fixing_time;
-    LOG(INFO) << "ARCS UNFIXING TIME: " << arcs_unfixing_time;
+    LOG(INFO) << "ARCS FIXING TIME: " << graph_.get_arcs_fixing_time();
+    LOG(INFO) << "ARCS UNFIXING TIME: " << graph_.get_arcs_unfixing_time();
     LOG(INFO) << "RELABEL TIME: " << relabel_time;
     LOG(INFO) << "PUSH TIME: " << push_time;
     LOG(INFO) << "UPDATE ADMISIBLE TIME: " << update_admisible_time;
@@ -335,65 +318,6 @@ namespace flowlessly {
     return false;
   }
 
-  // NOTE: if threshold is set to a smaller value than 2*n*eps then the
-  // problem may become infeasable. Check the paper.
-  void CostScaling::arcsFixing(int64_t fix_threshold) {
-    arcs_fixing_time -= getTime();
-    uint32_t num_nodes = graph_.get_num_nodes();
-    vector<int64_t>& potential = graph_.get_potential();
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    list<Arc*>& fixed_arcs = graph_.get_fixed_arcs();
-    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
-      map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
-      map<uint32_t, Arc*>::iterator end_it = arcs[node_id].end();
-      while (it != end_it) {
-        if (it->second->cost + potential[node_id] - potential[it->first] >
-            fix_threshold) {
-          fixed_arcs.push_front(it->second);
-          fixed_arcs.push_front(it->second->reverse_arc);
-          map<uint32_t, Arc*>::iterator to_erase_it = it;
-          uint32_t dst_node_id = it->first;
-          ++it;
-          arcs[node_id].erase(to_erase_it);
-          arcs[dst_node_id].erase(node_id);
-          admisible_arcs[dst_node_id].erase(node_id);
-        } else {
-          ++it;
-        }
-      }
-    }
-    arcs_fixing_time += getTime();
-  }
-
-  // NOTE: if threshold is set to a smaller value than 2*n*eps then the
-  // problem may become infeasable. Check the paper.
-  void CostScaling::arcsUnfixing(int64_t fix_threshold) {
-    arcs_unfixing_time -= getTime();
-    uint32_t num_nodes = graph_.get_num_nodes();
-    vector<int64_t>& potential = graph_.get_potential();
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    list<Arc*>& fixed_arcs = graph_.get_fixed_arcs();
-    for (list<Arc*>::iterator it = fixed_arcs.begin(); it != fixed_arcs.end(); ) {
-      int64_t reduced_cost = (*it)->cost + potential[(*it)->src_node_id] -
-        potential[(*it)->dst_node_id];
-      if (reduced_cost < fix_threshold) {
-        // Unfix node.
-        list<Arc*>::iterator to_erase_it = it;
-        arcs[(*it)->src_node_id][(*it)->dst_node_id] = *it;
-        if (reduced_cost < 0 && (*it)->cap > 0) {
-          admisible_arcs[(*it)->src_node_id][(*it)->dst_node_id] = *it;
-        }
-        ++it;
-        fixed_arcs.erase(to_erase_it);
-      } else {
-        ++it;
-      }
-    }
-    arcs_unfixing_time += getTime();
-  }
-
   void CostScaling::push(Arc* arc, queue<uint32_t>& active_nodes,
                          vector<int32_t>& nodes_demand) {
     push_time -= getTime();
@@ -470,7 +394,7 @@ namespace flowlessly {
     vector<int64_t>& potential = graph_.get_potential();
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    int64_t refine_pot = getRefinePotential(node_id, eps);
+    int64_t refine_pot = graph_.getRefinePotential(node_id, eps);
     //    int64_t refine_pot = eps;
     for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
          n_it != arcs[node_id].end(); ++n_it) {
@@ -492,21 +416,6 @@ namespace flowlessly {
     }
     potential[node_id] -= refine_pot;
     relabel_time += getTime();
-  }
-
-  // Get the max refine potential that can be used in the relabel.
-  int64_t CostScaling::getRefinePotential(uint64_t node_id, int64_t eps) {
-    vector<int64_t>& potential = graph_.get_potential();
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    int64_t new_pot = numeric_limits<int64_t>::min();
-    for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
-         n_it != arcs[node_id].end(); ++n_it) {
-      if (n_it->second->cap > 0) {
-        new_pot = max(new_pot,
-                      potential[n_it->first] - n_it->second->cost - eps);
-      }
-    }
-    return potential[node_id] - new_pot;
   }
 
 }

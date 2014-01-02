@@ -1,6 +1,7 @@
 #ifndef FLOWLESSLY_GRAPH_H
 #define FLOWLESSLY_GRAPH_H
 
+#include <limits>
 #include <list>
 #include <map>
 #include <set>
@@ -19,6 +20,7 @@ namespace flowlessly {
   public:
     Graph() {
       added_sink_and_source = false;
+      last_fixing_threshold = numeric_limits<int64_t>::max();
     }
 
     Graph(Graph& copy) {
@@ -48,6 +50,8 @@ namespace flowlessly {
     list<Arc*>& get_fixed_arcs();
     set<uint32_t>& get_source_nodes();
     set<uint32_t>& get_sink_nodes();
+    double get_arcs_fixing_time();
+    double get_arcs_unfixing_time();
     bool hasSinkAndSource();
     void removeSinkAndSource();
     void addSinkAndSource();
@@ -58,6 +62,12 @@ namespace flowlessly {
     void removeNodes(vector<uint32_t>& nodes_id);
     uint32_t addNode(uint32_t node_id, int32_t node_demand,
                      int64_t node_potential, vector<Arc*>& arcs_from_node);
+    void removeTaskNodes(uint16_t percentage);
+    void nodeArcsFixing(uint32_t node_id, int64_t fix_threshold);
+    void arcsFixing(int64_t fix_threshold);
+    void arcsUnfixing(int64_t fix_threshold);
+    int64_t scaleUpCosts(int64_t scale_up);
+    int64_t getRefinePotential(uint64_t node_id, int64_t eps);
 
   private:
     void allocateGraphMemory(uint32_t num_nodes);
@@ -78,7 +88,11 @@ namespace flowlessly {
     set<uint32_t> sink_nodes;
     set<uint32_t> single_source_node;
     set<uint32_t> single_sink_node;
+    list<uint32_t> task_nodes;
     bool added_sink_and_source;
+    int64_t last_fixing_threshold;
+    double arcs_fixing_time;
+    double arcs_unfixing_time;
 
   };
 

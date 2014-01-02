@@ -1,5 +1,7 @@
 #include "graph.h"
 
+#include "utils.h"
+
 #include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <glog/logging.h>
@@ -48,6 +50,7 @@ namespace flowlessly {
           nodes_demand[node_id] = lexical_cast<int32_t>(vals[2]);
           if (nodes_demand[node_id] > 0) {
             source_nodes.insert(node_id);
+            task_nodes.push_front(node_id);
           } else if (nodes_demand[node_id] < 0) {
             sink_nodes.insert(node_id);
           }
@@ -355,12 +358,21 @@ namespace flowlessly {
   }
 
   void Graph::removeNode(uint32_t node_id) {
-    // Delete arcs in which node_id appears from the list of fixed
-    // arcs.
-
-    // TODO(ionel): Implement this. Currently we have to go over the entire
-    // fixed_arc list. This is to inefficient.
-
+    if (FLAGS_arc_fixing) {
+      // Delete arcs in which node_id appears from the list of fixed
+      // arcs.
+      // TODO(ionel): Improve this. It is very inefficient.
+      for (list<Arc*>::iterator it = fixed_arcs.begin();
+           it != fixed_arcs.end();) {
+        if ((*it)->src_node_id == node_id || (*it)->dst_node_id == node_id) {
+          list<Arc*>::iterator to_erase_it = it;
+          ++it;
+          fixed_arcs.erase(to_erase_it);
+        } else {
+          ++it;
+        }
+      }
+    }
     // Delete arcs for the arcs and admisible arcs.
     for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
          it != arcs[node_id].end(); ) {
@@ -387,6 +399,7 @@ namespace flowlessly {
     // Delete node from sink or source nodes set.
     if (nodes_demand[node_id] > 0) {
       source_nodes.erase(node_id);
+      task_nodes.remove(node_id);
     } else if (nodes_demand[node_id] < 0) {
       sink_nodes.erase(node_id);
     }
@@ -419,7 +432,9 @@ namespace flowlessly {
       potential[new_node_id] = node_potential;
       nodes_demand[new_node_id] = node_demand;
     }
-    // TODO(ionel): Update fixed arcs.
+    if (FLAGS_arc_fixing) {
+      nodeArcsFixing(new_node_id, last_fixing_threshold);
+    }
     for (vector<Arc*>::iterator it = arcs_from_node.begin();
          it != arcs_from_node.end(); ++it) {
       Arc* arc = (*it);
@@ -439,10 +454,130 @@ namespace flowlessly {
     }
     if (nodes_demand[new_node_id] > 0) {
       source_nodes.insert(new_node_id);
+      task_nodes.remove(new_node_id);
     } else if (nodes_demand[new_node_id] < 0) {
       sink_nodes.insert(new_node_id);
     }
     return new_node_id;
+  }
+
+  void Graph::removeTaskNodes(uint16_t percentage) {
+    for (list<uint32_t>::iterator it = task_nodes.begin();
+         it != task_nodes.end(); ++it) {
+      if (rand() % 100 < percentage) {
+        list<uint32_t>::iterator to_erase_it = it;
+        ++it;
+        // The node is removed from the task_nodes in the removeNode function.
+        removeNode(*to_erase_it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  void Graph::nodeArcsFixing(uint32_t node_id, int64_t fix_threshold) {
+    for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+         it != arcs[node_id].end(); ) {
+      if (it->second->cost + potential[node_id] - potential[it->first] >
+          fix_threshold) {
+        fixed_arcs.push_front(it->second);
+        fixed_arcs.push_front(it->second->reverse_arc);
+        map<uint32_t, Arc*>::iterator to_erase_it = it;
+        uint32_t dst_node_id = it->first;
+        ++it;
+        arcs[node_id].erase(to_erase_it);
+        arcs[dst_node_id].erase(node_id);
+        admisible_arcs[dst_node_id].erase(node_id);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  // NOTE: if threshold is set to a smaller value than 2*n*eps then the
+  // problem may become infeasable. Check the paper.
+  void Graph::arcsFixing(int64_t fix_threshold) {
+    arcs_fixing_time -= getTime();
+    fixed_arcs.clear();
+    last_fixing_threshold = fix_threshold;
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ) {
+        if (it->second->cost + potential[node_id] - potential[it->first] >
+            fix_threshold) {
+          fixed_arcs.push_front(it->second);
+          fixed_arcs.push_front(it->second->reverse_arc);
+          map<uint32_t, Arc*>::iterator to_erase_it = it;
+          uint32_t dst_node_id = it->first;
+          ++it;
+          arcs[node_id].erase(to_erase_it);
+          arcs[dst_node_id].erase(node_id);
+          admisible_arcs[dst_node_id].erase(node_id);
+        } else {
+          ++it;
+        }
+      }
+    }
+    arcs_fixing_time += getTime();
+  }
+
+  // NOTE: if threshold is set to a smaller value than 2*n*eps then the
+  // problem may become infeasable. Check the paper.
+  void Graph::arcsUnfixing(int64_t fix_threshold) {
+    arcs_unfixing_time -= getTime();
+    for (list<Arc*>::iterator it = fixed_arcs.begin(); it != fixed_arcs.end(); ) {
+      int64_t reduced_cost = (*it)->cost + potential[(*it)->src_node_id] -
+        potential[(*it)->dst_node_id];
+      if (reduced_cost < fix_threshold) {
+        // Unfix node.
+        list<Arc*>::iterator to_erase_it = it;
+        arcs[(*it)->src_node_id][(*it)->dst_node_id] = *it;
+        if (reduced_cost < 0 && (*it)->cap > 0) {
+          admisible_arcs[(*it)->src_node_id][(*it)->dst_node_id] = *it;
+        }
+        ++it;
+        fixed_arcs.erase(to_erase_it);
+      } else {
+        ++it;
+      }
+    }
+    arcs_unfixing_time += getTime();
+  }
+
+  double Graph::get_arcs_fixing_time() {
+    return arcs_fixing_time;
+  }
+
+  double Graph::get_arcs_unfixing_time() {
+    return arcs_unfixing_time;
+  }
+
+  // Scales up costs by alpha * num_nodes
+  // It returns the value from where eps should start.
+  int64_t Graph::scaleUpCosts(int64_t scale_up) {
+    int64_t max_cost_arc = numeric_limits<int64_t>::min();
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      for (map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        it->second->cost *= scale_up;
+        max_cost_arc = max(max_cost_arc, it->second->cost);
+      }
+    }
+    return pow(FLAGS_alpha_scaling_factor,
+               ceil(log(max_cost_arc) / log(FLAGS_alpha_scaling_factor)));
+  }
+
+  // Get the max refine potential that can be used in the relabel.
+  int64_t Graph::getRefinePotential(uint64_t node_id, int64_t eps) {
+    int64_t new_pot = numeric_limits<int64_t>::min();
+    for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
+         n_it != arcs[node_id].end(); ++n_it) {
+      if (n_it->second->cap > 0) {
+        new_pot = max(new_pot,
+                      potential[n_it->first] - n_it->second->cost - eps);
+      }
+    }
+    return potential[node_id] - new_pot;
   }
 
 }

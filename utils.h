@@ -10,6 +10,10 @@
 #include <unistd.h>
 #include <vector>
 
+DECLARE_int64(alpha_scaling_factor);
+DECLARE_bool(arc_fixing);
+DECLARE_int64(arc_fixing_threshold);
+
 namespace flowlessly {
 
   using namespace std;

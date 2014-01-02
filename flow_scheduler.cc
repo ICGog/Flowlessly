@@ -24,6 +24,8 @@ DEFINE_bool(push_lookahead, true, "Activate push lookahead heuristic");
 DEFINE_bool(arc_fixing, true, "Activate arc fixing heuristic");
 DEFINE_int64(arc_fixing_threshold, 3, "After how many refines to start fixing arcs");
 DEFINE_int64(price_refine_threshold, 3, "After how many iterations to start price refinement");
+DEFINE_bool(incremental, false, "Activate incremental tests");
+DEFINE_int64(task_completion_percentage, 0, "Task that are completed in each scheduling iteration");
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
@@ -49,58 +51,65 @@ int main(int argc, char *argv[]) {
   graph.readGraph(FLAGS_graph_file);
   int64_t scale_down = 1;
   double algo_start_time = getTime();
-  if (!FLAGS_algorithm.compare("bellman_ford")) {
-    LOG(INFO) << "------------ BellmanFord ------------";
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
-    vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
-    vector<uint32_t> predecessor(num_nodes, 0);
-    BellmanFord(graph, graph.get_source_nodes(), distance, predecessor);
-    logCosts(distance, predecessor);
-  } else if (!FLAGS_algorithm.compare("dijkstra")) {
-    LOG(INFO) << "------------ Dijkstra ------------";
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
-    vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
-    vector<uint32_t> predecessor(num_nodes, 0);
-    DijkstraSimple(graph, graph.get_source_nodes(), distance, predecessor);
-    logCosts(distance, predecessor);
-  } else if (!FLAGS_algorithm.compare("dijkstra_heap")) {
-    LOG(INFO) << "------------ Dijkstra with heaps ------------";
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
-    vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
-    vector<uint32_t> predecessor(num_nodes, 0);
-    DijkstraOptimized(graph, graph.get_source_nodes(), distance, predecessor);
-    logCosts(distance, predecessor);
-  } else if (!FLAGS_algorithm.compare("cycle_cancelling")) {
-    LOG(INFO) << "------------ Cycle cancelling min cost flow ------------";
-    CycleCancelling cycle_cancelling(graph);
-    cycle_cancelling.cycleCancelling();
-  } else if (!FLAGS_algorithm.compare("successive_shortest_path")) {
-    LOG(INFO) << "------------ Successive shortest path min cost flow "
-              << "------------";
-    SuccessiveShortest successive_shortest(graph);
-    successive_shortest.successiveShortestPath();
-  } else if (!FLAGS_algorithm.compare("successive_shortest_path_potentials")) {
-    LOG(INFO) << "------------ Successive shortest path with potential min"
-              << " cost flow ------------";
-    SuccessiveShortest successive_shortest(graph);
-    successive_shortest.successiveShortestPathPotentials();
-  } else if (!FLAGS_algorithm.compare("cost_scaling")) {
-    LOG(INFO) << "------------ Cost scaling min cost flow ------------";
-    CostScaling min_cost_flow(graph);
-    min_cost_flow.costScaling();
-    scale_down = FLAGS_alpha_scaling_factor * graph.get_num_nodes();
-  } else if (!FLAGS_algorithm.compare("check_flow")) {
-    if (!FLAGS_flow_file.compare("")) {
-      LOG(ERROR) << "Please set the flow_file argument";
-      return -1;
-    }
-    if (graph.checkFlow(FLAGS_flow_file)) {
-      LOG(INFO) << "Flow is valid";
+  uint32_t num_iterations = 1;
+  if (FLAGS_incremental) {
+    num_iterations = 2;
+  }
+  for (; num_iterations > 0; --num_iterations) {
+    if (!FLAGS_algorithm.compare("bellman_ford")) {
+      LOG(INFO) << "------------ BellmanFord ------------";
+      uint32_t num_nodes = graph.get_num_nodes() + 1;
+      vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
+      vector<uint32_t> predecessor(num_nodes, 0);
+      BellmanFord(graph, graph.get_source_nodes(), distance, predecessor);
+      logCosts(distance, predecessor);
+    } else if (!FLAGS_algorithm.compare("dijkstra")) {
+      LOG(INFO) << "------------ Dijkstra ------------";
+      uint32_t num_nodes = graph.get_num_nodes() + 1;
+      vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
+      vector<uint32_t> predecessor(num_nodes, 0);
+      DijkstraSimple(graph, graph.get_source_nodes(), distance, predecessor);
+      logCosts(distance, predecessor);
+    } else if (!FLAGS_algorithm.compare("dijkstra_heap")) {
+      LOG(INFO) << "------------ Dijkstra with heaps ------------";
+      uint32_t num_nodes = graph.get_num_nodes() + 1;
+      vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
+      vector<uint32_t> predecessor(num_nodes, 0);
+      DijkstraOptimized(graph, graph.get_source_nodes(), distance, predecessor);
+      logCosts(distance, predecessor);
+    } else if (!FLAGS_algorithm.compare("cycle_cancelling")) {
+      LOG(INFO) << "------------ Cycle cancelling min cost flow ------------";
+      CycleCancelling cycle_cancelling(graph);
+      cycle_cancelling.cycleCancelling();
+    } else if (!FLAGS_algorithm.compare("successive_shortest_path")) {
+      LOG(INFO) << "------------ Successive shortest path min cost flow "
+                << "------------";
+      SuccessiveShortest successive_shortest(graph);
+      successive_shortest.successiveShortestPath();
+    } else if (!FLAGS_algorithm.compare("successive_shortest_path_potentials")) {
+      LOG(INFO) << "------------ Successive shortest path with potential min"
+                << " cost flow ------------";
+      SuccessiveShortest successive_shortest(graph);
+      successive_shortest.successiveShortestPathPotentials();
+    } else if (!FLAGS_algorithm.compare("cost_scaling")) {
+      LOG(INFO) << "------------ Cost scaling min cost flow ------------";
+      CostScaling min_cost_flow(graph);
+      min_cost_flow.costScaling();
+      scale_down = FLAGS_alpha_scaling_factor * graph.get_num_nodes();
+    } else if (!FLAGS_algorithm.compare("check_flow")) {
+      if (!FLAGS_flow_file.compare("")) {
+        LOG(ERROR) << "Please set the flow_file argument";
+        return -1;
+      }
+      if (graph.checkFlow(FLAGS_flow_file)) {
+        LOG(INFO) << "Flow is valid";
+      } else {
+        LOG(ERROR) << "Flow is not valid";
+      }
     } else {
-      LOG(ERROR) << "Flow is not valid";
+      LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
     }
-  } else {
-    LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
+    graph.removeTaskNodes(FLAGS_task_completion_percentage);
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
   double algo_end_time = getTime();
