@@ -5,14 +5,13 @@
 
 #include <glog/logging.h>
 #include <gflags/gflags.h>
-#include <sys/time.h>
-#include <sys/resource.h>
 #include <unistd.h>
 #include <vector>
 
 DECLARE_int64(alpha_scaling_factor);
 DECLARE_bool(arc_fixing);
 DECLARE_int64(arc_fixing_threshold);
+DECLARE_int64(num_preference_arcs);
 
 namespace flowlessly {
 

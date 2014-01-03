@@ -22,6 +22,8 @@ namespace flowlessly {
   Graph(Statistics& stats): statistics(stats) {
       added_sink_and_source = false;
       last_fixing_threshold = numeric_limits<int64_t>::max();
+      cluster_agg_id = 1;
+      sink_id = 2;
     }
 
     Graph(Graph& copy) {
@@ -62,6 +64,7 @@ namespace flowlessly {
     bool checkEpsOptimality(int64_t eps);
     void removeNode(uint32_t node_id);
     void removeNodes(vector<uint32_t>& nodes_id);
+    uint32_t addTaskNode();
     uint32_t addNode(int32_t node_demand, int64_t node_potential,
                      vector<Arc*>& arcs_from_node);
     uint32_t removeTaskNodes(uint16_t percentage);
@@ -84,16 +87,18 @@ namespace flowlessly {
     vector<int64_t> potential;
     vector<map<uint32_t, Arc*> > arcs;
     vector<map<uint32_t, Arc*> > admisible_arcs;
-    list<uint32_t> deleted_nodes;
+    set<uint32_t> deleted_nodes;
     list<Arc*> fixed_arcs;
     set<uint32_t> source_nodes;
     set<uint32_t> sink_nodes;
     set<uint32_t> single_source_node;
     set<uint32_t> single_sink_node;
-    list<uint32_t> task_nodes;
+    set<uint32_t> task_nodes;
     bool added_sink_and_source;
     int64_t last_fixing_threshold;
     Statistics statistics;
+    uint32_t cluster_agg_id;
+    uint32_t sink_id;
 
   };
 

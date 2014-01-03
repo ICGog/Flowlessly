@@ -50,7 +50,7 @@ namespace flowlessly {
           nodes_demand[node_id] = lexical_cast<int32_t>(vals[2]);
           if (nodes_demand[node_id] > 0) {
             source_nodes.insert(node_id);
-            task_nodes.push_front(node_id);
+            task_nodes.insert(node_id);
           } else if (nodes_demand[node_id] < 0) {
             sink_nodes.insert(node_id);
           }
@@ -357,7 +357,13 @@ namespace flowlessly {
     return true;
   }
 
+  // It can not remove sink or cluster agg nodes.
+  // Do not decrease num_nodes because we can remove a node with a random id.
   void Graph::removeNode(uint32_t node_id) {
+    if (node_id == cluster_agg_id || node_id == sink_id) {
+      LOG(ERROR) << "Can not remove sink or cluster agg node";
+      return;
+    }
     if (FLAGS_arc_fixing) {
       // Delete arcs in which node_id appears from the list of fixed
       // arcs.
@@ -399,11 +405,11 @@ namespace flowlessly {
     // Delete node from sink or source nodes set.
     if (nodes_demand[node_id] > 0) {
       source_nodes.erase(node_id);
-      task_nodes.remove(node_id);
+      task_nodes.erase(node_id);
     } else if (nodes_demand[node_id] < 0) {
       sink_nodes.erase(node_id);
     }
-    deleted_nodes.push_back(node_id);
+    deleted_nodes.insert(node_id);
     nodes_demand[node_id] = 0;
     potential[node_id] = 0;
   }
@@ -413,6 +419,35 @@ namespace flowlessly {
          it != node_ids.end(); ++it) {
       removeNode(*it);
     }
+  }
+
+  // TODO(ionel): Experiment with initially adjusting the potential.
+  uint32_t Graph::addTaskNode() {
+    vector<Arc*> arcs_from_node;
+    // Add arc to cluster agg.
+    uint32_t arc_cost = rand() % 50;
+    Arc* agg_arc = new Arc(0, cluster_agg_id, 1, arc_cost, NULL);
+    Arc* agg_reverse_arc = new Arc(cluster_agg_id, 0, 0, -arc_cost,
+                                   agg_arc);
+    agg_arc->set_reverse_arc(agg_reverse_arc);
+    arcs_from_node.push_back(agg_arc);
+    for (uint32_t num_pref = 0; num_pref < FLAGS_num_preference_arcs;
+         ++num_pref) {
+      uint32_t dst_node_id = rand() % num_nodes + 1;
+      // Make sure that the node is not a task node, deleted node,
+      // sink or cluster agg node.
+      while (task_nodes.find(dst_node_id) != task_nodes.end() ||
+             deleted_nodes.find(dst_node_id) != deleted_nodes.end() ||
+             dst_node_id == cluster_agg_id || dst_node_id == sink_id) {
+        dst_node_id = rand() % num_nodes + 1;
+      }
+      arc_cost = rand() % 50;
+      Arc* arc = new Arc(0, dst_node_id, 1, arc_cost, NULL);
+      Arc* reverse_arc = new Arc(dst_node_id, 0, 0, -arc_cost, arc);
+      arc->set_reverse_arc(reverse_arc);
+      arcs_from_node.push_back(arc);
+    }
+    return addNode(1, 0, arcs_from_node);
   }
 
   uint32_t Graph::addNode(int32_t node_demand, int64_t node_potential,
@@ -426,8 +461,9 @@ namespace flowlessly {
       arcs.push_back(map<uint32_t, Arc*>());
       admisible_arcs.push_back(map<uint32_t, Arc*>());
     } else {
-      new_node_id = deleted_nodes.front();
-      deleted_nodes.pop_front();
+      set<uint32_t>::iterator it = deleted_nodes.begin();
+      new_node_id = *it;
+      deleted_nodes.erase(it);
       potential[new_node_id] = node_potential;
       nodes_demand[new_node_id] = node_demand;
     }
@@ -453,7 +489,7 @@ namespace flowlessly {
     }
     if (nodes_demand[new_node_id] > 0) {
       source_nodes.insert(new_node_id);
-      task_nodes.remove(new_node_id);
+      task_nodes.erase(new_node_id);
     } else if (nodes_demand[new_node_id] < 0) {
       sink_nodes.insert(new_node_id);
     }
@@ -462,10 +498,10 @@ namespace flowlessly {
 
   uint32_t Graph::removeTaskNodes(uint16_t percentage) {
     uint32_t num_removed = 0;
-    for (list<uint32_t>::iterator it = task_nodes.begin();
+    for (set<uint32_t>::iterator it = task_nodes.begin();
          it != task_nodes.end(); ++it) {
       if (rand() % 100 < percentage) {
-        list<uint32_t>::iterator to_erase_it = it;
+        set<uint32_t>::iterator to_erase_it = it;
         ++it;
         // The node is removed from the task_nodes in the removeNode function.
         removeNode(*to_erase_it);

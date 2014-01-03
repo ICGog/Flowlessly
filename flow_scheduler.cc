@@ -27,6 +27,7 @@ DEFINE_int64(price_refine_threshold, 3, "After how many iterations to start pric
 DEFINE_bool(incremental, false, "Activate incremental tests");
 DEFINE_int64(task_completion_percentage, 0, "Task that are completed in each scheduling iteration");
 DEFINE_bool(log_statistics, false, "Log various statistics such as time");
+DEFINE_int64(num_preference_arcs, 20, "Number of preference arcs.");
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
@@ -113,7 +114,9 @@ int main(int argc, char *argv[]) {
     }
     uint32_t num_removed =
       graph.removeTaskNodes(FLAGS_task_completion_percentage);
-    // TODO(ionel): Add new nodes to the graph.
+    for (; num_removed > 0; --num_removed) {
+      graph.addTaskNode();
+    }
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
   double algo_end_time = stats.getTime();
