@@ -415,8 +415,7 @@ namespace flowlessly {
     }
   }
 
-  uint32_t Graph::addNode(uint32_t node_id, int32_t node_demand,
-                          int64_t node_potential,
+  uint32_t Graph::addNode(int32_t node_demand, int64_t node_potential,
                           vector<Arc*>& arcs_from_node) {
     uint32_t new_node_id;
     if (deleted_nodes.empty()) {
@@ -461,7 +460,8 @@ namespace flowlessly {
     return new_node_id;
   }
 
-  void Graph::removeTaskNodes(uint16_t percentage) {
+  uint32_t Graph::removeTaskNodes(uint16_t percentage) {
+    uint32_t num_removed = 0;
     for (list<uint32_t>::iterator it = task_nodes.begin();
          it != task_nodes.end(); ++it) {
       if (rand() % 100 < percentage) {
@@ -469,10 +469,12 @@ namespace flowlessly {
         ++it;
         // The node is removed from the task_nodes in the removeNode function.
         removeNode(*to_erase_it);
+        ++num_removed;
       } else {
         ++it;
       }
     }
+    return num_removed;
   }
 
   void Graph::nodeArcsFixing(uint32_t node_id, int64_t fix_threshold) {
@@ -497,7 +499,7 @@ namespace flowlessly {
   // NOTE: if threshold is set to a smaller value than 2*n*eps then the
   // problem may become infeasable. Check the paper.
   void Graph::arcsFixing(int64_t fix_threshold) {
-    arcs_fixing_time -= getTime();
+    statistics.update_arcs_fixing_start_time();
     fixed_arcs.clear();
     last_fixing_threshold = fix_threshold;
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
@@ -518,13 +520,13 @@ namespace flowlessly {
         }
       }
     }
-    arcs_fixing_time += getTime();
+    statistics.update_arcs_fixing_end_time();
   }
 
   // NOTE: if threshold is set to a smaller value than 2*n*eps then the
   // problem may become infeasable. Check the paper.
   void Graph::arcsUnfixing(int64_t fix_threshold) {
-    arcs_unfixing_time -= getTime();
+    statistics.update_arcs_unfixing_start_time();
     for (list<Arc*>::iterator it = fixed_arcs.begin(); it != fixed_arcs.end(); ) {
       int64_t reduced_cost = (*it)->cost + potential[(*it)->src_node_id] -
         potential[(*it)->dst_node_id];
@@ -541,15 +543,7 @@ namespace flowlessly {
         ++it;
       }
     }
-    arcs_unfixing_time += getTime();
-  }
-
-  double Graph::get_arcs_fixing_time() {
-    return arcs_fixing_time;
-  }
-
-  double Graph::get_arcs_unfixing_time() {
-    return arcs_unfixing_time;
+    statistics.update_arcs_unfixing_end_time();
   }
 
   // Scales up costs by alpha * num_nodes

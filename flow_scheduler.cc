@@ -26,6 +26,7 @@ DEFINE_int64(arc_fixing_threshold, 3, "After how many refines to start fixing ar
 DEFINE_int64(price_refine_threshold, 3, "After how many iterations to start price refinement");
 DEFINE_bool(incremental, false, "Activate incremental tests");
 DEFINE_int64(task_completion_percentage, 0, "Task that are completed in each scheduling iteration");
+DEFINE_bool(log_statistics, false, "Log various statistics such as time");
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
@@ -46,11 +47,12 @@ int main(int argc, char *argv[]) {
   init(argc, argv);
   FLAGS_logtostderr = true;
   FLAGS_stderrthreshold = 0;
-  Graph graph;
-  double read_start_time = getTime();
+  Statistics stats;
+  Graph graph(stats);
+  double read_start_time = stats.getTime();
   graph.readGraph(FLAGS_graph_file);
   int64_t scale_down = 1;
-  double algo_start_time = getTime();
+  double algo_start_time = stats.getTime();
   uint32_t num_iterations = 1;
   if (FLAGS_incremental) {
     num_iterations = 2;
@@ -93,7 +95,7 @@ int main(int argc, char *argv[]) {
       successive_shortest.successiveShortestPathPotentials();
     } else if (!FLAGS_algorithm.compare("cost_scaling")) {
       LOG(INFO) << "------------ Cost scaling min cost flow ------------";
-      CostScaling min_cost_flow(graph);
+      CostScaling min_cost_flow(graph, stats);
       min_cost_flow.costScaling();
       scale_down = FLAGS_alpha_scaling_factor * graph.get_num_nodes();
     } else if (!FLAGS_algorithm.compare("check_flow")) {
@@ -109,12 +111,14 @@ int main(int argc, char *argv[]) {
     } else {
       LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
     }
-    graph.removeTaskNodes(FLAGS_task_completion_percentage);
+    uint32_t num_removed =
+      graph.removeTaskNodes(FLAGS_task_completion_percentage);
+    // TODO(ionel): Add new nodes to the graph.
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
-  double algo_end_time = getTime();
+  double algo_end_time = stats.getTime();
   graph.writeGraph(FLAGS_out_graph_file, scale_down);
-  double write_end_time = getTime();
+  double write_end_time = stats.getTime();
   LOG(INFO) << "Read time: " << algo_start_time - read_start_time;
   LOG(INFO) << "Algorithm run time: " << algo_end_time - algo_start_time;
   LOG(INFO) << "Write time: " << write_end_time - algo_end_time;

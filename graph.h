@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "arc.h"
+#include "statistics.h"
 
 namespace flowlessly {
 
@@ -18,7 +19,7 @@ namespace flowlessly {
   class Graph {
 
   public:
-    Graph() {
+  Graph(Statistics& stats): statistics(stats) {
       added_sink_and_source = false;
       last_fixing_threshold = numeric_limits<int64_t>::max();
     }
@@ -34,6 +35,9 @@ namespace flowlessly {
       sink_nodes = copy.sink_nodes;
       deleted_nodes = copy.deleted_nodes;
       added_sink_and_source = copy.added_sink_and_source;
+      task_nodes = copy.task_nodes;
+      last_fixing_threshold = copy.last_fixing_threshold;
+      statistics = copy.statistics;
     }
 
     void readGraph(const string& graph_file);
@@ -50,8 +54,6 @@ namespace flowlessly {
     list<Arc*>& get_fixed_arcs();
     set<uint32_t>& get_source_nodes();
     set<uint32_t>& get_sink_nodes();
-    double get_arcs_fixing_time();
-    double get_arcs_unfixing_time();
     bool hasSinkAndSource();
     void removeSinkAndSource();
     void addSinkAndSource();
@@ -60,9 +62,9 @@ namespace flowlessly {
     bool checkEpsOptimality(int64_t eps);
     void removeNode(uint32_t node_id);
     void removeNodes(vector<uint32_t>& nodes_id);
-    uint32_t addNode(uint32_t node_id, int32_t node_demand,
-                     int64_t node_potential, vector<Arc*>& arcs_from_node);
-    void removeTaskNodes(uint16_t percentage);
+    uint32_t addNode(int32_t node_demand, int64_t node_potential,
+                     vector<Arc*>& arcs_from_node);
+    uint32_t removeTaskNodes(uint16_t percentage);
     void nodeArcsFixing(uint32_t node_id, int64_t fix_threshold);
     void arcsFixing(int64_t fix_threshold);
     void arcsUnfixing(int64_t fix_threshold);
@@ -91,8 +93,7 @@ namespace flowlessly {
     list<uint32_t> task_nodes;
     bool added_sink_and_source;
     int64_t last_fixing_threshold;
-    double arcs_fixing_time;
-    double arcs_unfixing_time;
+    Statistics statistics;
 
   };
 

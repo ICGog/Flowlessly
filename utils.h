@@ -18,7 +18,6 @@ namespace flowlessly {
 
   using namespace std;
 
-  double getTime();
   void logCosts(const vector<int64_t>& distance,
                 const vector<uint32_t>& predecessor);
   void maxFlow(Graph& graph);
