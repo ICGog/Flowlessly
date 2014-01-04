@@ -185,10 +185,8 @@ namespace flowlessly {
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
       for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
            it != admisible_arcs[node_id].end(); ++it) {
-        int64_t reduced_cost = it->second->cost + potential[node_id] -
-          potential[it->first];
-        LOG(INFO) << node_id << " " << it->first << " " << it->second->cap
-                  << " " << reduced_cost;
+        LOG(INFO) << node_id << " " << it->first << " " << it->second->cap <<
+          " " << it->second->cost + potential[node_id] - potential[it->first];
       }
     }
   }
@@ -199,8 +197,8 @@ namespace flowlessly {
       for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
            it != arcs[node_id].end(); ++it) {
         if (it->second->cap > 0) {
-          LOG(INFO) << node_id << " " << it->first << " "
-                    << it->second->cap << " " << it->second->cost;
+          LOG(INFO) << node_id << " " << it->first << " " << it->second->cap
+                    << " " << it->second->cost;
         }
       }
     }
@@ -255,6 +253,7 @@ namespace flowlessly {
     num_nodes += 2;
     arcs.resize(num_nodes + 1);
     nodes_demand.resize(num_nodes + 1);
+    potential.resize(num_nodes + 1);
     single_source_node.insert(num_nodes - 1);
     single_sink_node.insert(num_nodes);
     for (set<uint32_t>::iterator it = source_nodes.begin();
@@ -290,8 +289,7 @@ namespace flowlessly {
     }
     for (set<uint32_t>::iterator it = sink_nodes.begin();
          it != sink_nodes.end(); ++it) {
-      Arc* arc = arcs[*it][num_nodes];
-      nodes_demand[*it] = -arc->cap;
+      nodes_demand[*it] = -arcs[*it][num_nodes]->cap;
       arcs[*it].erase(num_nodes);
     }
     added_sink_and_source = false;
@@ -300,6 +298,8 @@ namespace flowlessly {
     arcs.pop_back();
     nodes_demand.pop_back();
     nodes_demand.pop_back();
+    potential.pop_back();
+    potential.pop_back();
     single_source_node.clear();
     single_sink_node.clear();
   }
@@ -331,11 +331,8 @@ namespace flowlessly {
       return false;
     } else {
       marked[node_id] = 1;
-      map<uint32_t, Arc*>::const_iterator it =
-        admisible_arcs[node_id].begin();
-      map<uint32_t, Arc*>::const_iterator end_it =
-        admisible_arcs[node_id].end();
-      for (; it != end_it; ++it) {
+      for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
+           it != admisible_arcs[node_id].end(); ++it) {
         if (marked[it->first] != 2 &&
             !visitTopologically(it->first, marked, ordered)) {
           return false;
@@ -359,9 +356,10 @@ namespace flowlessly {
       // TODO(ionel): Improve this. It is very inefficient.
       for (list<Arc*>::iterator it = fixed_arcs.begin();
            it != fixed_arcs.end();) {
-        if ((*it)->src_node_id == node_id || (*it)->dst_node_id == node_id) {
+        Arc* arc = *it;
+        if (arc->src_node_id == node_id || arc->dst_node_id == node_id) {
           list<Arc*>::iterator to_erase_it = it;
-          Arc* arc = *it;
+          // Remove flow from the arc.
           if (arc->cap < arc->initial_cap) {
             nodes_demand[arc->src_node_id] += arc->initial_cap - arc->cap;
             nodes_demand[arc->dst_node_id] -= arc->initial_cap - arc->cap;
@@ -376,21 +374,23 @@ namespace flowlessly {
     }
     // Delete arcs for the arcs and admisible arcs.
     for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
-         it != arcs[node_id].end(); ) {
+         it != arcs[node_id].end(); ++it) {
       Arc* arc = it->second;
       if (arc->cap < arc->initial_cap) {
-        nodes_demand[arc->src_node_id] += arc->initial_cap - arc->cap;
+        nodes_demand[node_id] += arc->initial_cap - arc->cap;
         nodes_demand[arc->dst_node_id] -= arc->initial_cap - arc->cap;
       }
-      map<uint32_t, Arc*>::iterator to_erase_it = it;
-      ++it;
-      arcs[node_id].erase(to_erase_it);
-      arcs[it->first].erase(node_id);
-      admisible_arcs[node_id].erase(it->first);
-      admisible_arcs[it->first].erase(node_id);
+      if (arc->cap > arc->initial_cap) {
+        nodes_demand[node_id] -= arc->cap;
+        nodes_demand[arc->dst_node_id] += arc->cap;
+      }
+      arcs[arc->dst_node_id].erase(node_id);
+      admisible_arcs[arc->dst_node_id].erase(node_id);
       delete arc->reverse_arc;
       delete arc;
     }
+    arcs[node_id].clear();
+    admisible_arcs[node_id].clear();
     task_nodes.erase(node_id);
     // Delete node from sink or source nodes set.
     if (nodes_demand[node_id] > 0) {
@@ -456,9 +456,6 @@ namespace flowlessly {
       potential[new_node_id] = node_potential;
       nodes_demand[new_node_id] = node_demand;
     }
-    if (FLAGS_arc_fixing) {
-      nodeArcsFixing(new_node_id, last_fixing_threshold);
-    }
     for (vector<Arc*>::iterator it = arcs_from_node.begin();
          it != arcs_from_node.end(); ++it) {
       Arc* arc = (*it);
@@ -474,6 +471,9 @@ namespace flowlessly {
       if (-reduced_cost < 0 && arc->reverse_arc->cap > 0) {
         admisible_arcs[arc->dst_node_id][arc->src_node_id] = arc->reverse_arc;
       }
+    }
+    if (FLAGS_arc_fixing) {
+      nodeArcsFixing(new_node_id, last_fixing_threshold);
     }
     if (nodes_demand[new_node_id] > 0) {
       source_nodes.insert(new_node_id);
@@ -552,14 +552,15 @@ namespace flowlessly {
   void Graph::arcsUnfixing(int64_t fix_threshold) {
     statistics.update_arcs_unfixing_start_time();
     for (list<Arc*>::iterator it = fixed_arcs.begin(); it != fixed_arcs.end(); ) {
-      int64_t reduced_cost = (*it)->cost + potential[(*it)->src_node_id] -
-        potential[(*it)->dst_node_id];
+      Arc* arc = *it;
+      int64_t reduced_cost = arc->cost + potential[arc->src_node_id] -
+        potential[arc->dst_node_id];
       if (reduced_cost < fix_threshold) {
         // Unfix node.
         list<Arc*>::iterator to_erase_it = it;
-        arcs[(*it)->src_node_id][(*it)->dst_node_id] = *it;
-        if (reduced_cost < 0 && (*it)->cap > 0) {
-          admisible_arcs[(*it)->src_node_id][(*it)->dst_node_id] = *it;
+        arcs[arc->src_node_id][arc->dst_node_id] = arc;
+        if (reduced_cost < 0 && arc->cap > 0) {
+          admisible_arcs[arc->src_node_id][arc->dst_node_id] = arc;
         }
         ++it;
         fixed_arcs.erase(to_erase_it);
@@ -623,6 +624,43 @@ namespace flowlessly {
       }
       potential[node_id] = 0;
     }
+  }
+
+  bool Graph::checkValid() {
+    int64_t total_demand = 0;
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      if (deleted_nodes.find(node_id) == deleted_nodes.end()) {
+        total_demand += nodes_demand[node_id];
+      }
+      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        Arc* arc = it->second;
+        if (arc->initial_cap > 0) {
+          // Forward arc.
+          if (arc->cap > arc->initial_cap) {
+            LOG(ERROR) << "Capacity bigger than initial capacity";
+            return false;
+          } else if (arc->initial_cap - arc->cap != arc->reverse_arc->cap) {
+            LOG(ERROR) << "The flow is not equal to the reverse flow";
+            return false;
+          }
+        } else {
+          // Reverse arc.
+          if (arc->cap < arc->initial_cap) {
+            LOG(ERROR) << "Capacity smaller than initial capacity on reverse arc";
+            return false;
+          } else if (arc->cap != arc->reverse_arc->initial_cap -
+                     arc->reverse_arc->cap) {
+            LOG(ERROR) << "The flow is not equal to the reverse flow";
+          }
+        }
+      }
+    }
+    if (total_demand != 0) {
+      LOG(ERROR) << "Total demand is non-zero: " << total_demand;
+      return false;
+    }
+    return true;
   }
 
 }

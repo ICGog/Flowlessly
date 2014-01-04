@@ -19,7 +19,8 @@ namespace flowlessly {
   class CostScaling {
 
   public:
-  CostScaling(Graph graph, Statistics& stats): graph_(graph), statistics(stats) {
+  CostScaling(Graph graph, Statistics& stats): graph_(graph),
+      statistics(stats) {
     }
 
     void costScaling();

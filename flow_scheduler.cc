@@ -114,6 +114,7 @@ int main(int argc, char *argv[]) {
     double algo_end_time = stats.getTime();
     if (FLAGS_log_statistics) {
       stats.logTimeStatistics();
+      stats.clearStatistics();
     }
     LOG(INFO) << "Algorithm run time: " << algo_end_time - algo_start_time;
     uint32_t num_removed =
