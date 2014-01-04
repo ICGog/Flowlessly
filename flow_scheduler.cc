@@ -52,13 +52,13 @@ int main(int argc, char *argv[]) {
   Graph graph(stats);
   double read_start_time = stats.getTime();
   graph.readGraph(FLAGS_graph_file);
-  int64_t scale_down = 1;
-  double algo_start_time = stats.getTime();
+  double read_end_time = stats.getTime();
   uint32_t num_iterations = 1;
   if (FLAGS_incremental) {
     num_iterations = 2;
   }
   for (; num_iterations > 0; --num_iterations) {
+    double algo_start_time = stats.getTime();
     if (!FLAGS_algorithm.compare("bellman_ford")) {
       LOG(INFO) << "------------ BellmanFord ------------";
       uint32_t num_nodes = graph.get_num_nodes() + 1;
@@ -98,7 +98,6 @@ int main(int argc, char *argv[]) {
       LOG(INFO) << "------------ Cost scaling min cost flow ------------";
       CostScaling min_cost_flow(graph, stats);
       min_cost_flow.costScaling();
-      scale_down = FLAGS_alpha_scaling_factor * graph.get_num_nodes();
     } else if (!FLAGS_algorithm.compare("check_flow")) {
       if (!FLAGS_flow_file.compare("")) {
         LOG(ERROR) << "Please set the flow_file argument";
@@ -112,6 +111,11 @@ int main(int argc, char *argv[]) {
     } else {
       LOG(ERROR) << "Unknown algorithm: " << FLAGS_algorithm;
     }
+    double algo_end_time = stats.getTime();
+    if (FLAGS_log_statistics) {
+      stats.logTimeStatistics();
+    }
+    LOG(INFO) << "Algorithm run time: " << algo_end_time - algo_start_time;
     uint32_t num_removed =
       graph.removeTaskNodes(FLAGS_task_completion_percentage);
     for (; num_removed > 0; --num_removed) {
@@ -119,12 +123,11 @@ int main(int argc, char *argv[]) {
     }
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
-  double algo_end_time = stats.getTime();
-  graph.writeGraph(FLAGS_out_graph_file, scale_down);
+  double write_start_time = stats.getTime();
+  graph.writeGraph(FLAGS_out_graph_file);
   double write_end_time = stats.getTime();
-  LOG(INFO) << "Read time: " << algo_start_time - read_start_time;
-  LOG(INFO) << "Algorithm run time: " << algo_end_time - algo_start_time;
-  LOG(INFO) << "Write time: " << write_end_time - algo_end_time;
+  LOG(INFO) << "Read time: " << read_end_time - read_start_time;
+  LOG(INFO) << "Write time: " << write_end_time - write_start_time;
   LOG(INFO) << "Total time: " << write_end_time - read_start_time;
   return 0;
 }

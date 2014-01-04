@@ -28,7 +28,6 @@ namespace flowlessly {
 
     Graph(Graph& copy) {
       num_nodes = copy.num_nodes;
-      num_arcs = copy.num_arcs;
       nodes_demand = copy.nodes_demand;
       potential = copy.potential;
       arcs = copy.arcs;
@@ -46,9 +45,8 @@ namespace flowlessly {
     void logGraph();
     void logAdmisibleGraph();
     void logResidualGraph();
-    void writeGraph(const string& out_graph_file, int64_t scale_down);
+    void writeGraph(const string& out_graph_file);
     uint32_t get_num_nodes();
-    uint32_t get_num_arcs();
     vector<int32_t>& get_nodes_demand();
     vector<int64_t>& get_potential();
     vector<map<uint32_t, Arc*> >& get_arcs();
@@ -72,7 +70,9 @@ namespace flowlessly {
     void arcsFixing(int64_t fix_threshold);
     void arcsUnfixing(int64_t fix_threshold);
     int64_t scaleUpCosts(int64_t scale_up);
+    void scaleDownCosts(int64_t scale_down);
     int64_t getRefinePotential(uint64_t node_id, int64_t eps);
+    void resetPotentials();
 
   private:
     void allocateGraphMemory(uint32_t num_nodes);
@@ -80,7 +80,6 @@ namespace flowlessly {
                             list<uint32_t>& ordered);
 
     uint32_t num_nodes;
-    uint32_t num_arcs;
     // nodes_demand has a positive value if the node is a supply node and a
     // negative value if the node is a demand one.
     vector<int32_t> nodes_demand;

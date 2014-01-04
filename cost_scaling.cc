@@ -115,12 +115,10 @@ namespace flowlessly {
     if (FLAGS_arc_fixing) {
       graph_.arcsUnfixing(numeric_limits<int64_t>::max());
     }
+    graph_.scaleDownCosts(FLAGS_alpha_scaling_factor * num_nodes);
     LOG(INFO) << "Num relables: " << relabel_cnt;
     LOG(INFO) << "Num pushes: " << pushes_cnt;
     LOG(INFO) << "Num refines: " << refine_cnt;
-    if (FLAGS_log_statistics) {
-      statistics.logTimeStatistics();
-    }
   }
 
   void CostScaling::globalPotentialsUpdate(int64_t eps) {
