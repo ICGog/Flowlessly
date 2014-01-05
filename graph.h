@@ -19,7 +19,7 @@ namespace flowlessly {
   class Graph {
 
   public:
-  Graph(Statistics& stats): statistics(stats) {
+  Graph(Statistics* stats): statistics(stats) {
       added_sink_and_source = false;
       last_fixing_threshold = numeric_limits<int64_t>::max();
       cluster_agg_id = 1;
@@ -96,7 +96,7 @@ namespace flowlessly {
     set<uint32_t> task_nodes;
     bool added_sink_and_source;
     int64_t last_fixing_threshold;
-    Statistics statistics;
+    Statistics* statistics;
     uint32_t cluster_agg_id;
     uint32_t sink_id;
 

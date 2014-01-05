@@ -15,8 +15,8 @@ namespace flowlessly {
 
   void CostScaling::discharge(queue<uint32_t>& active_nodes,
                               vector<int32_t>& nodes_demand, int64_t eps) {
-    statistics.update_discharge_start_time();
-    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
+    statistics->update_discharge_start_time();
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_->get_admisible_arcs();
     while (!active_nodes.empty()) {
       uint32_t node_id = active_nodes.front();
       active_nodes.pop();
@@ -48,16 +48,16 @@ namespace flowlessly {
         }
       }
     }
-    statistics.update_discharge_end_time();
+    statistics->update_discharge_end_time();
   }
 
   void CostScaling::refine(int64_t eps) {
-    statistics.update_refine_start_time();
+    statistics->update_refine_start_time();
     // Saturate arcs with negative reduced cost.
     ++refine_cnt;
-    uint32_t num_nodes = graph_.get_num_nodes() + 1;
-    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
+    uint32_t num_nodes = graph_->get_num_nodes() + 1;
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_->get_admisible_arcs();
+    vector<int32_t>& nodes_demand = graph_->get_nodes_demand();
     // Saturate all the arcs with negative cost.
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
       for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
@@ -82,7 +82,7 @@ namespace flowlessly {
       }
     }
     discharge(active_nodes, nodes_demand, eps);
-    statistics.update_refine_end_time();
+    statistics->update_refine_end_time();
   }
 
   void CostScaling::costScaling() {
@@ -91,12 +91,12 @@ namespace flowlessly {
     //    Establish a feasible flow x in the network
     //    while eps >= 1/n do
     //      (e, f, p) = refine(e, f p)
-    uint32_t num_nodes = graph_.get_num_nodes() + 1;
+    uint32_t num_nodes = graph_->get_num_nodes() + 1;
     uint32_t eps_iteration_cnt = 0;
     relabel_cnt = 0;
     pushes_cnt = 0;
     refine_cnt = 0;
-    for (int64_t eps = graph_.scaleUpCosts(FLAGS_alpha_scaling_factor * num_nodes) /
+    for (int64_t eps = graph_->scaleUpCosts(FLAGS_alpha_scaling_factor * num_nodes) /
            FLAGS_alpha_scaling_factor; eps >= 1;
          eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
            1 : eps / FLAGS_alpha_scaling_factor, ++eps_iteration_cnt) {
@@ -109,22 +109,22 @@ namespace flowlessly {
       refine(eps);
       if (FLAGS_arc_fixing &&
           eps_iteration_cnt >= FLAGS_arc_fixing_threshold) {
-        graph_.arcsFixing(2 * (num_nodes - 1) * eps);
+        graph_->arcsFixing(2 * (num_nodes - 1) * eps);
       }
     }
     if (FLAGS_arc_fixing) {
-      graph_.arcsUnfixing(numeric_limits<int64_t>::max());
+      graph_->arcsUnfixing(numeric_limits<int64_t>::max());
     }
-    graph_.scaleDownCosts(FLAGS_alpha_scaling_factor * num_nodes);
+    graph_->scaleDownCosts(FLAGS_alpha_scaling_factor * num_nodes);
     LOG(INFO) << "Num relables: " << relabel_cnt;
     LOG(INFO) << "Num pushes: " << pushes_cnt;
     LOG(INFO) << "Num refines: " << refine_cnt;
   }
 
   void CostScaling::globalPotentialsUpdate(int64_t eps) {
-    statistics.update_global_update_start_time();
-    uint32_t num_nodes = graph_.get_num_nodes();
-    vector<int64_t>& potential = graph_.get_potential();
+    statistics->update_global_update_start_time();
+    uint32_t num_nodes = graph_->get_num_nodes();
+    vector<int64_t>& potential = graph_->get_potential();
     // Variable used to denote an empty bucket.
     // TODO(ionel): Goldberg says that max_rank should be set to eps * n, while
     // in Lemon is set to alpha * n. I think it should be eps * n, however, the
@@ -135,8 +135,8 @@ namespace flowlessly {
     vector<uint32_t> bucket(max_rank + 1, bucket_end);
     vector<uint32_t> bucket_prev(num_nodes + 1, 0);
     vector<uint32_t> bucket_next(num_nodes + 1, 0);
-    vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+    vector<int32_t>& nodes_demand = graph_->get_nodes_demand();
+    vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
     uint32_t num_active_nodes = 0;
     // Put nodes with negative excess in bucket[0].
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
@@ -156,7 +156,7 @@ namespace flowlessly {
     // still active improves runtime.
     // Return if there are no active nodes.
     if (num_active_nodes == 0) {
-      statistics.update_global_update_end_time();
+      statistics->update_global_update_end_time();
       return;
     }
     uint32_t bucket_index = 0;
@@ -208,23 +208,23 @@ namespace flowlessly {
       }
     }
     updateAdmisibleGraph(updated_nodes);
-    statistics.update_global_update_end_time();
+    statistics->update_global_update_end_time();
   }
 
   bool CostScaling::priceRefinement(int64_t eps) {
-    statistics.update_price_refine_start_time();
-    uint32_t num_nodes = graph_.get_num_nodes();
-    vector<int64_t>& potential = graph_.get_potential();
+    statistics->update_price_refine_start_time();
+    uint32_t num_nodes = graph_->get_num_nodes();
+    vector<int64_t>& potential = graph_->get_potential();
     uint32_t max_rank = FLAGS_alpha_scaling_factor * num_nodes;
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
+    vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_->get_admisible_arcs();
     vector<uint32_t> ordered_nodes;
     vector<int64_t> distance(num_nodes + 1, 0);
     uint32_t bucket_end = num_nodes + 1;
     vector<uint32_t> bucket(max_rank + 1, bucket_end);
     vector<uint32_t> bucket_prev(num_nodes + 1, 0);
     vector<uint32_t> bucket_next(num_nodes + 1, 0);
-    for (; graph_.orderTopologically(ordered_nodes);
+    for (; graph_->orderTopologically(ordered_nodes);
          ordered_nodes.clear()) {
       int64_t top_rank = 0;
       fill(distance.begin(), distance.end(), 0);
@@ -255,7 +255,7 @@ namespace flowlessly {
       }
       // Current flow is eps optimal.
       if (top_rank == 0) {
-        statistics.update_price_refine_end_time();
+        statistics->update_price_refine_end_time();
         return true;
       }
       for (int32_t bucket_index = top_rank; bucket_index > 0; --bucket_index) {
@@ -307,13 +307,13 @@ namespace flowlessly {
       }
       updateAdmisibleGraph(updated_nodes);
     }
-    statistics.update_price_refine_end_time();
+    statistics->update_price_refine_end_time();
     return false;
   }
 
   void CostScaling::push(Arc* arc, queue<uint32_t>& active_nodes,
                          vector<int32_t>& nodes_demand) {
-    statistics.update_push_start_time();
+    statistics->update_push_start_time();
     pushes_cnt++;
     int32_t min_flow = min(nodes_demand[arc->src_node_id], arc->cap);
     arc->cap -= min_flow;
@@ -324,15 +324,15 @@ namespace flowlessly {
     }
     nodes_demand[arc->dst_node_id] += min_flow;
     nodes_demand[arc->src_node_id] -= min_flow;
-    statistics.update_push_end_time();
+    statistics->update_push_end_time();
   }
 
   bool CostScaling::pushLookahead(Arc* arc, queue<uint32_t>& active_nodes,
                                   vector<int32_t>& nodes_demand, int64_t eps) {
-    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_->get_admisible_arcs();
     if (nodes_demand[arc->dst_node_id] < 0 ||
         admisible_arcs[arc->dst_node_id].size() > 0) {
-      statistics.update_push_start_time();
+      statistics->update_push_start_time();
       pushes_cnt++;
       int32_t cur_node_demand = nodes_demand[arc->src_node_id];
       int32_t min_flow = min(cur_node_demand, arc->cap);
@@ -346,7 +346,7 @@ namespace flowlessly {
       }
       nodes_demand[arc->dst_node_id] += min_flow;
       nodes_demand[arc->src_node_id] = cur_node_demand;
-      statistics.update_push_end_time();
+      statistics->update_push_end_time();
       return true;
     } else {
       relabel(arc->dst_node_id, eps);
@@ -355,10 +355,10 @@ namespace flowlessly {
   }
 
   void CostScaling::updateAdmisibleGraph(vector<uint32_t>& updated_nodes) {
-    statistics.update_admisible_start_time();
-    vector<int64_t>& potential = graph_.get_potential();
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
+    statistics->update_admisible_start_time();
+    vector<int64_t>& potential = graph_->get_potential();
+    vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_->get_admisible_arcs();
     for (vector<uint32_t>::iterator node_it = updated_nodes.begin();
          node_it != updated_nodes.end(); ++node_it) {
       for (map<uint32_t, Arc*>::iterator it = arcs[*node_it].begin();
@@ -378,16 +378,16 @@ namespace flowlessly {
         }
       }
     }
-    statistics.update_admisible_end_time();
+    statistics->update_admisible_end_time();
   }
 
   void CostScaling::relabel(uint32_t node_id, int64_t eps) {
-    statistics.update_relabel_start_time();
+    statistics->update_relabel_start_time();
     relabel_cnt++;
-    vector<int64_t>& potential = graph_.get_potential();
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    int64_t refine_pot = graph_.getRefinePotential(node_id, eps);
+    vector<int64_t>& potential = graph_->get_potential();
+    vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
+    vector<map<uint32_t, Arc*> >& admisible_arcs = graph_->get_admisible_arcs();
+    int64_t refine_pot = graph_->getRefinePotential(node_id, eps);
     //    int64_t refine_pot = eps;
     for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
          n_it != arcs[node_id].end(); ++n_it) {
@@ -408,7 +408,7 @@ namespace flowlessly {
       }
     }
     potential[node_id] -= refine_pot;
-    statistics.update_relabel_end_time();
+    statistics->update_relabel_end_time();
   }
 
 }

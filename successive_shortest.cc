@@ -9,8 +9,8 @@ namespace flowlessly {
   using namespace std;
 
   void SuccessiveShortest::reduceCost(vector<int64_t>& distance) {
-    uint32_t num_nodes = graph_.get_num_nodes() + 1;
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+    uint32_t num_nodes = graph_->get_num_nodes() + 1;
+    vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
       map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
       map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
@@ -32,17 +32,17 @@ namespace flowlessly {
     //        Find any shortest path P from s to t
     //        Augment current flow x along P
     //        update Gx
-    if (!graph_.hasSinkAndSource()) {
-      graph_.addSinkAndSource();
+    if (!graph_->hasSinkAndSource()) {
+      graph_->addSinkAndSource();
     }
-    uint32_t num_nodes = graph_.get_num_nodes() + 1;
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
+    uint32_t num_nodes = graph_->get_num_nodes() + 1;
+    vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
+    vector<int32_t>& nodes_demand = graph_->get_nodes_demand();
     vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
     // Works with the assumption that there's only a sink and a source node.
-    set<uint32_t> source_node = graph_.get_source_nodes();
-    uint32_t sink_node = *(graph_.get_sink_nodes().begin());
+    set<uint32_t> source_node = graph_->get_source_nodes();
+    uint32_t sink_node = *(graph_->get_sink_nodes().begin());
     do {
       fill(distance.begin(), distance.end(), numeric_limits<int64_t>::max());
       fill(predecessor.begin(), predecessor.end(), 0);
@@ -76,17 +76,17 @@ namespace flowlessly {
     //        Reduce Cost ( PI )
     //        Augment current flow x along P
     //        update Gx
-    if (!graph_.hasSinkAndSource()) {
-      graph_.addSinkAndSource();
+    if (!graph_->hasSinkAndSource()) {
+      graph_->addSinkAndSource();
     }
-    uint32_t num_nodes = graph_.get_num_nodes() + 1;
+    uint32_t num_nodes = graph_->get_num_nodes() + 1;
     vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
-    vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
+    vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
+    vector<int32_t>& nodes_demand = graph_->get_nodes_demand();
     // Works with the assumption that there's only a source and sink node.
-    set<uint32_t>& source_node = graph_.get_source_nodes();
-    uint32_t sink_node = *(graph_.get_sink_nodes().begin());
+    set<uint32_t>& source_node = graph_->get_source_nodes();
+    uint32_t sink_node = *(graph_->get_sink_nodes().begin());
     BellmanFord(graph_, source_node, distance, predecessor);
     reduceCost(distance);
     uint32_t iteration_cnt = 0;
@@ -94,7 +94,7 @@ namespace flowlessly {
       iteration_cnt++;
       fill(distance.begin(), distance.end(), numeric_limits<int64_t>::max());
       fill(predecessor.begin(), predecessor.end(), 0);
-      graph_.logGraph();
+      graph_->logGraph();
       DijkstraOptimized(graph_, source_node, distance, predecessor);
       logCosts(distance, predecessor);
       if (distance[sink_node] < numeric_limits<int64_t>::max()) {

@@ -21,15 +21,15 @@ namespace flowlessly {
   // Computes max flow over the graph using the Ford-Fulkerson algorithm.
   // The Complexity of the algorithm is O(E * F). Where F is the max flow value.
   // NOTE: This method changes the graph.
-  void maxFlow(Graph& graph) {
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
-    vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
-    vector<int32_t>& nodes_demand = graph.get_nodes_demand();
+  void maxFlow(Graph* graph) {
+    uint32_t num_nodes = graph->get_num_nodes() + 1;
+    vector<map<uint32_t, Arc*> >& arcs = graph->get_arcs();
+    vector<int32_t>& nodes_demand = graph->get_nodes_demand();
     vector<int32_t> visited(num_nodes, 0);
     vector<uint32_t> predecessor(num_nodes, 0);
     // Works with the assumption that there is only a sink and a source node.
-    uint32_t source_node = *(graph.get_source_nodes().begin());
-    uint32_t sink_node = *(graph.get_sink_nodes().begin());
+    uint32_t source_node = *(graph->get_source_nodes().begin());
+    uint32_t sink_node = *(graph->get_sink_nodes().begin());
     bool has_path = true;
     while (has_path) {
       has_path = false;
@@ -68,14 +68,14 @@ namespace flowlessly {
         }
       }
       LOG(INFO) << "The graph after another iteration of max flow.";
-      graph.logGraph();
+      graph->logGraph();
     }
   }
 
-  void BellmanFord(Graph& graph, const set<uint32_t>& source_nodes,
+  void BellmanFord(Graph* graph, const set<uint32_t>& source_nodes,
                    vector<int64_t>& distance, vector<uint32_t>& predecessor) {
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
-    const vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
+    uint32_t num_nodes = graph->get_num_nodes() + 1;
+    const vector<map<uint32_t, Arc*> >& arcs = graph->get_arcs();
     for (set<uint32_t>::const_iterator it = source_nodes.begin();
          it != source_nodes.end(); ++it) {
       distance[*it] = 0;
@@ -100,12 +100,12 @@ namespace flowlessly {
     }
   }
 
-  void DijkstraSimple(Graph& graph, const set<uint32_t>& source_nodes,
+  void DijkstraSimple(Graph* graph, const set<uint32_t>& source_nodes,
                       vector<int64_t>& distance,
                       vector<uint32_t>& predecessor) {
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
+    uint32_t num_nodes = graph->get_num_nodes() + 1;
     vector<bool> node_used(num_nodes, false);
-    const vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
+    const vector<map<uint32_t, Arc*> >& arcs = graph->get_arcs();
     // Works with the assumption that all the elements of distance are
     // already set to INF.
     for (set<uint32_t>::const_iterator it = source_nodes.begin();
@@ -135,11 +135,11 @@ namespace flowlessly {
     }
   }
 
-  void DijkstraOptimized(Graph& graph, const set<uint32_t>& source_nodes,
+  void DijkstraOptimized(Graph* graph, const set<uint32_t>& source_nodes,
                          vector<int64_t>& distance,
                          vector<uint32_t>& predecessor) {
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
-    const vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
+    uint32_t num_nodes = graph->get_num_nodes() + 1;
+    const vector<map<uint32_t, Arc*> >& arcs = graph->get_arcs();
     vector<bool> visited(num_nodes, false);
     binomial_heap<pair<int64_t, uint32_t>,
                   compare<greater<pair<int64_t, uint32_t> > > > dist_heap;

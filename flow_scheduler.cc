@@ -49,7 +49,7 @@ int main(int argc, char *argv[]) {
   FLAGS_logtostderr = true;
   FLAGS_stderrthreshold = 0;
   Statistics stats;
-  Graph graph(stats);
+  Graph graph(&stats);
   double read_start_time = stats.getTime();
   graph.readGraph(FLAGS_graph_file);
   double read_end_time = stats.getTime();
@@ -64,39 +64,39 @@ int main(int argc, char *argv[]) {
       uint32_t num_nodes = graph.get_num_nodes() + 1;
       vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
       vector<uint32_t> predecessor(num_nodes, 0);
-      BellmanFord(graph, graph.get_source_nodes(), distance, predecessor);
+      BellmanFord(&graph, graph.get_source_nodes(), distance, predecessor);
       logCosts(distance, predecessor);
     } else if (!FLAGS_algorithm.compare("dijkstra")) {
       LOG(INFO) << "------------ Dijkstra ------------";
       uint32_t num_nodes = graph.get_num_nodes() + 1;
       vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
       vector<uint32_t> predecessor(num_nodes, 0);
-      DijkstraSimple(graph, graph.get_source_nodes(), distance, predecessor);
+      DijkstraSimple(&graph, graph.get_source_nodes(), distance, predecessor);
       logCosts(distance, predecessor);
     } else if (!FLAGS_algorithm.compare("dijkstra_heap")) {
       LOG(INFO) << "------------ Dijkstra with heaps ------------";
       uint32_t num_nodes = graph.get_num_nodes() + 1;
       vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
       vector<uint32_t> predecessor(num_nodes, 0);
-      DijkstraOptimized(graph, graph.get_source_nodes(), distance, predecessor);
+      DijkstraOptimized(&graph, graph.get_source_nodes(), distance, predecessor);
       logCosts(distance, predecessor);
     } else if (!FLAGS_algorithm.compare("cycle_cancelling")) {
       LOG(INFO) << "------------ Cycle cancelling min cost flow ------------";
-      CycleCancelling cycle_cancelling(graph);
+      CycleCancelling cycle_cancelling(&graph);
       cycle_cancelling.cycleCancelling();
     } else if (!FLAGS_algorithm.compare("successive_shortest_path")) {
       LOG(INFO) << "------------ Successive shortest path min cost flow "
                 << "------------";
-      SuccessiveShortest successive_shortest(graph);
+      SuccessiveShortest successive_shortest(&graph);
       successive_shortest.successiveShortestPath();
     } else if (!FLAGS_algorithm.compare("successive_shortest_path_potentials")) {
       LOG(INFO) << "------------ Successive shortest path with potential min"
                 << " cost flow ------------";
-      SuccessiveShortest successive_shortest(graph);
+      SuccessiveShortest successive_shortest(&graph);
       successive_shortest.successiveShortestPathPotentials();
     } else if (!FLAGS_algorithm.compare("cost_scaling")) {
       LOG(INFO) << "------------ Cost scaling min cost flow ------------";
-      CostScaling min_cost_flow(graph, stats);
+      CostScaling min_cost_flow(&graph, &stats);
       min_cost_flow.costScaling();
     } else if (!FLAGS_algorithm.compare("check_flow")) {
       if (!FLAGS_flow_file.compare("")) {
@@ -122,6 +122,7 @@ int main(int argc, char *argv[]) {
     for (; num_removed > 0; --num_removed) {
       graph.addTaskNode();
     }
+    graph.resetPotentials();
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
   double write_start_time = stats.getTime();
