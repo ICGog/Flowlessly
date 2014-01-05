@@ -8,13 +8,13 @@ namespace flowlessly {
   class CycleCancelling {
 
   public:
-  CycleCancelling(Graph* graph): graph_(graph) {
+  CycleCancelling(Graph& graph): graph_(graph) {
     }
 
     void cycleCancelling();
 
   private:
-    Graph* graph_;
+    Graph& graph_;
 
     // Returns true if it removes a negative cycle.
     bool removeNegativeCycles(vector<int64_t>& distance,

@@ -18,33 +18,33 @@ namespace flowlessly {
     //        mr = min(r(i,j)) where (i,j) is part of W
     //        augment mr units of flow along the cycle W
     //        update Gx
-    if (!graph_->hasSinkAndSource()) {
-      graph_->addSinkAndSource();
+    if (!graph_.hasSinkAndSource()) {
+      graph_.addSinkAndSource();
     }
     maxFlow(graph_);
-    graph_->removeSinkAndSource();
-    graph_->logGraph();
-    uint32_t num_nodes = graph_->get_num_nodes() + 1;
+    graph_.removeSinkAndSource();
+    graph_.logGraph();
+    uint32_t num_nodes = graph_.get_num_nodes() + 1;
     vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
     vector<uint32_t> predecessor(num_nodes, 0);
-    BellmanFord(graph_, graph_->get_source_nodes(), distance, predecessor);
+    BellmanFord(graph_, graph_.get_source_nodes(), distance, predecessor);
     logCosts(distance, predecessor);
     bool removed_cycle = removeNegativeCycles(distance, predecessor);
-    graph_->logGraph();
+    graph_.logGraph();
     while (removed_cycle) {
       fill(distance.begin(), distance.end(), numeric_limits<int64_t>::max());
       fill(predecessor.begin(), predecessor.end(), 0);
-      BellmanFord(graph_, graph_->get_source_nodes(), distance, predecessor);
+      BellmanFord(graph_, graph_.get_source_nodes(), distance, predecessor);
       logCosts(distance, predecessor);
       removed_cycle = removeNegativeCycles(distance, predecessor);
-      graph_->logGraph();
+      graph_.logGraph();
     }
   }
 
   bool CycleCancelling::removeNegativeCycles(vector<int64_t>& distance,
                                              vector<uint32_t>& predecessor) {
-    uint32_t num_nodes = graph_->get_num_nodes() + 1;
-    const vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
+    uint32_t num_nodes = graph_.get_num_nodes() + 1;
+    const vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
       map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
       map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
@@ -64,10 +64,10 @@ namespace flowlessly {
                                     uint32_t src_node, uint32_t dst_node) {
     LOG(INFO) << "Negative cycle closed by: (" << src_node << ", "
               << dst_node << ")";
-    uint32_t num_nodes = graph_->get_num_nodes() + 1;
+    uint32_t num_nodes = graph_.get_num_nodes() + 1;
     vector<bool> seen(num_nodes, false);
-    vector<map<uint32_t, Arc*> >& arcs = graph_->get_arcs();
-    vector<int32_t>& nodes_demand = graph_->get_nodes_demand();
+    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
+    vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
     int32_t min_flow = numeric_limits<int32_t>::max();
     uint32_t cur_node = src_node;
     // Detect the node where the cycle ends.

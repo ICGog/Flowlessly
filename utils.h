@@ -19,12 +19,12 @@ namespace flowlessly {
 
   void logCosts(const vector<int64_t>& distance,
                 const vector<uint32_t>& predecessor);
-  void maxFlow(Graph* graph);
-  void BellmanFord(Graph* graph, const set<uint32_t>& source_nodes,
+  void maxFlow(Graph& graph);
+  void BellmanFord(Graph& graph, const set<uint32_t>& source_nodes,
                    vector<int64_t>& distance, vector<uint32_t>& predecessor);
-  void DijkstraSimple(Graph* graph, const set<uint32_t>& source_node,
+  void DijkstraSimple(Graph& graph, const set<uint32_t>& source_node,
                       vector<int64_t>& distance, vector<uint32_t>& predecessor);
-  void DijkstraOptimized(Graph* graph, const set<uint32_t>& source_node,
+  void DijkstraOptimized(Graph& graph, const set<uint32_t>& source_node,
                          vector<int64_t>& distance,
                          vector<uint32_t>& predecessor);
 

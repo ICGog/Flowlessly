@@ -19,18 +19,18 @@ namespace flowlessly {
   class CostScaling {
 
   public:
-  CostScaling(Graph* graph, Statistics* stats): graph_(graph),
+  CostScaling(Graph& graph, Statistics& stats): graph_(graph),
       statistics(stats) {
     }
 
     void costScaling();
 
   private:
-    Graph* graph_;
+    Graph& graph_;
+    Statistics& statistics;
     uint32_t relabel_cnt;
     uint32_t pushes_cnt;
     uint32_t refine_cnt;
-    Statistics* statistics;
 
     void refine(int64_t eps);
     void discharge(queue<uint32_t>& active_nodes, vector<int32_t>& nodes_demand,

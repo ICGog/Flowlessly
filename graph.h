@@ -19,26 +19,11 @@ namespace flowlessly {
   class Graph {
 
   public:
-  Graph(Statistics* stats): statistics(stats) {
+  Graph(Statistics& stats): statistics(stats) {
       added_sink_and_source = false;
       last_fixing_threshold = numeric_limits<int64_t>::max();
       cluster_agg_id = 1;
       sink_id = 2;
-    }
-
-    Graph(Graph& copy) {
-      num_nodes = copy.num_nodes;
-      nodes_demand = copy.nodes_demand;
-      potential = copy.potential;
-      arcs = copy.arcs;
-      admisible_arcs = copy.admisible_arcs;
-      source_nodes = copy.source_nodes;
-      sink_nodes = copy.sink_nodes;
-      deleted_nodes = copy.deleted_nodes;
-      added_sink_and_source = copy.added_sink_and_source;
-      task_nodes = copy.task_nodes;
-      last_fixing_threshold = copy.last_fixing_threshold;
-      statistics = copy.statistics;
     }
 
     void readGraph(const string& graph_file);
@@ -96,7 +81,7 @@ namespace flowlessly {
     set<uint32_t> task_nodes;
     bool added_sink_and_source;
     int64_t last_fixing_threshold;
-    Statistics* statistics;
+    Statistics& statistics;
     uint32_t cluster_agg_id;
     uint32_t sink_id;
 

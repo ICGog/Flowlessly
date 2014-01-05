@@ -8,14 +8,14 @@ namespace flowlessly {
   class SuccessiveShortest {
 
   public:
-  SuccessiveShortest(Graph* graph): graph_(graph) {
+  SuccessiveShortest(Graph& graph): graph_(graph) {
     }
 
     void successiveShortestPath();
     void successiveShortestPathPotentials();
 
   private:
-    Graph* graph_;
+    Graph& graph_;
 
     void reduceCost(vector<int64_t>& distance);
 

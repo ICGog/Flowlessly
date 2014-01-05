@@ -523,7 +523,7 @@ namespace flowlessly {
   // NOTE: if threshold is set to a smaller value than 2*n*eps then the
   // problem may become infeasable. Check the paper.
   void Graph::arcsFixing(int64_t fix_threshold) {
-    statistics->update_arcs_fixing_start_time();
+    statistics.update_arcs_fixing_start_time();
     fixed_arcs.clear();
     last_fixing_threshold = fix_threshold;
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
@@ -544,13 +544,13 @@ namespace flowlessly {
         }
       }
     }
-    statistics->update_arcs_fixing_end_time();
+    statistics.update_arcs_fixing_end_time();
   }
 
   // NOTE: if threshold is set to a smaller value than 2*n*eps then the
   // problem may become infeasable. Check the paper.
   void Graph::arcsUnfixing(int64_t fix_threshold) {
-    statistics->update_arcs_unfixing_start_time();
+    statistics.update_arcs_unfixing_start_time();
     for (list<Arc*>::iterator it = fixed_arcs.begin(); it != fixed_arcs.end(); ) {
       Arc* arc = *it;
       int64_t reduced_cost = arc->cost + potential[arc->src_node_id] -
@@ -568,7 +568,7 @@ namespace flowlessly {
         ++it;
       }
     }
-    statistics->update_arcs_unfixing_end_time();
+    statistics.update_arcs_unfixing_end_time();
   }
 
   // Scales up costs by alpha * num_nodes
