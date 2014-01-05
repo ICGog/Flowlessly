@@ -31,6 +31,7 @@ namespace flowlessly {
     void logAdmisibleGraph();
     void logResidualGraph();
     void writeGraph(const string& out_graph_file);
+
     uint32_t get_num_nodes() const;
     vector<int32_t>& get_nodes_demand();
     vector<int64_t>& get_potential();
@@ -39,26 +40,32 @@ namespace flowlessly {
     list<Arc*>& get_fixed_arcs();
     set<uint32_t>& get_source_nodes();
     set<uint32_t>& get_sink_nodes();
+
+    bool checkFlow(const string& flow_file);
+    bool checkEpsOptimality(int64_t eps);
+    bool checkValid();
+
     bool hasSinkAndSource();
     void removeSinkAndSource();
     void addSinkAndSource();
-    bool orderTopologically(vector<uint32_t>& ordered);
-    bool checkFlow(const string& flow_file);
-    bool checkEpsOptimality(int64_t eps);
     void removeNode(uint32_t node_id);
-    void removeNodes(vector<uint32_t>& nodes_id);
     uint32_t addTaskNode();
     uint32_t addNode(int32_t node_demand, int64_t node_potential,
-                     vector<Arc*>& arcs_from_node);
+                     const vector<Arc*>& arcs_from_node);
     uint32_t removeTaskNodes(uint16_t percentage);
+    void removeNodeFromFixedArcs(uint32_t node_id);
+    void removeArcs(uint32_t node_id);
+    int64_t generateArcCost();
+    uint32_t generateResourceNodeId();
+
     void nodeArcsFixing(uint32_t node_id, int64_t fix_threshold);
     void arcsFixing(int64_t fix_threshold);
     void arcsUnfixing(int64_t fix_threshold);
+    bool orderTopologically(vector<uint32_t>& ordered);
     int64_t scaleUpCosts(int64_t scale_up);
     void scaleDownCosts(int64_t scale_down);
     int64_t getRefinePotential(uint64_t node_id, int64_t eps);
     void resetPotentials();
-    bool checkValid();
 
   private:
     void allocateGraphMemory(uint32_t num_nodes);

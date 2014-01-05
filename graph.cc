@@ -344,34 +344,29 @@ namespace flowlessly {
     return true;
   }
 
-  // It can not remove sink or cluster agg nodes.
-  // Do not decrease num_nodes because we can remove a node with a random id.
-  void Graph::removeNode(uint32_t node_id) {
-    if (node_id == cluster_agg_id || node_id == sink_id) {
-      LOG(ERROR) << "Can not remove sink or cluster agg node";
-      return;
-    }
-    if (FLAGS_arc_fixing) {
-      // Delete arcs in which node_id appears from the list of fixed arcs.
-      // TODO(ionel): Improve this. It is very inefficient.
-      for (list<Arc*>::iterator it = fixed_arcs.begin();
-           it != fixed_arcs.end();) {
-        Arc* arc = *it;
-        if (arc->src_node_id == node_id || arc->dst_node_id == node_id) {
-          list<Arc*>::iterator to_erase_it = it;
-          // Remove flow from the arc.
-          if (arc->cap < arc->initial_cap) {
-            nodes_demand[arc->src_node_id] += arc->initial_cap - arc->cap;
-            nodes_demand[arc->dst_node_id] -= arc->initial_cap - arc->cap;
-          }
-          ++it;
-          fixed_arcs.erase(to_erase_it);
-          delete arc;
-        } else {
-          ++it;
+  void Graph::removeNodeFromFixedArcs(uint32_t node_id) {
+    // Delete arcs in which node_id appears from the list of fixed arcs.
+    // TODO(ionel): Improve this. It is very inefficient.
+    for (list<Arc*>::iterator it = fixed_arcs.begin();
+         it != fixed_arcs.end();) {
+      Arc* arc = *it;
+      if (arc->src_node_id == node_id || arc->dst_node_id == node_id) {
+        list<Arc*>::iterator to_erase_it = it;
+        // Remove flow from the arc.
+        if (arc->cap < arc->initial_cap) {
+          nodes_demand[arc->src_node_id] += arc->initial_cap - arc->cap;
+          nodes_demand[arc->dst_node_id] -= arc->initial_cap - arc->cap;
         }
+        ++it;
+        fixed_arcs.erase(to_erase_it);
+        delete arc;
+      } else {
+        ++it;
       }
     }
+  }
+
+  void Graph::removeArcs(uint32_t node_id) {
     // Delete arcs for the arcs and admisible arcs.
     for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
          it != arcs[node_id].end(); ++it) {
@@ -391,8 +386,20 @@ namespace flowlessly {
     }
     arcs[node_id].clear();
     admisible_arcs[node_id].clear();
+  }
+
+  // It can not remove sink or cluster agg nodes.
+  // Do not decrease num_nodes because we can remove a node with a random id.
+  void Graph::removeNode(uint32_t node_id) {
+    if (node_id == cluster_agg_id || node_id == sink_id) {
+      LOG(ERROR) << "Can not remove sink or cluster agg node";
+      return;
+    }
+    if (FLAGS_arc_fixing) {
+      removeNodeFromFixedArcs(node_id);
+    }
+    removeArcs(node_id);
     task_nodes.erase(node_id);
-    // Delete node from sink or source nodes set.
     if (nodes_demand[node_id] > 0) {
       source_nodes.erase(node_id);
     } else if (nodes_demand[node_id] < 0) {
@@ -403,34 +410,35 @@ namespace flowlessly {
     potential[node_id] = 0;
   }
 
-  void Graph::removeNodes(vector<uint32_t>& node_ids) {
-    for (vector<uint32_t>::iterator it = node_ids.begin();
-         it != node_ids.end(); ++it) {
-      removeNode(*it);
+  int64_t Graph::generateArcCost() {
+    return rand() % 10 + 1;
+  }
+
+  uint32_t Graph::generateResourceNodeId() {
+    uint32_t dst_node_id = rand() % num_nodes + 1;
+    // Make sure that the node is not a task node, deleted node,
+    // sink or cluster agg node.
+    while (task_nodes.find(dst_node_id) != task_nodes.end() ||
+           deleted_nodes.find(dst_node_id) != deleted_nodes.end() ||
+           dst_node_id == cluster_agg_id || dst_node_id == sink_id) {
+      dst_node_id = rand() % num_nodes + 1;
     }
+    return dst_node_id;
   }
 
   // TODO(ionel): Experiment with initially adjusting the potential.
   uint32_t Graph::addTaskNode() {
     vector<Arc*> arcs_from_node;
     // Add arc to cluster agg.
-    int64_t arc_cost = rand() % 10 + 1;
+    int64_t arc_cost = generateArcCost();
     Arc* agg_arc = new Arc(0, cluster_agg_id, 1, arc_cost, NULL);
-    Arc* agg_reverse_arc = new Arc(cluster_agg_id, 0, 0, -arc_cost,
-                                   agg_arc);
+    Arc* agg_reverse_arc = new Arc(cluster_agg_id, 0, 0, -arc_cost, agg_arc);
     agg_arc->set_reverse_arc(agg_reverse_arc);
     arcs_from_node.push_back(agg_arc);
     for (uint32_t num_pref = 0; num_pref < FLAGS_num_preference_arcs;
          ++num_pref) {
-      uint32_t dst_node_id = rand() % num_nodes + 1;
-      // Make sure that the node is not a task node, deleted node,
-      // sink or cluster agg node.
-      while (task_nodes.find(dst_node_id) != task_nodes.end() ||
-             deleted_nodes.find(dst_node_id) != deleted_nodes.end() ||
-             dst_node_id == cluster_agg_id || dst_node_id == sink_id) {
-        dst_node_id = rand() % num_nodes + 1;
-      }
-      arc_cost = rand() % 10 + 1;
+      uint32_t dst_node_id = generateResourceNodeId();
+      arc_cost = generateArcCost();
       Arc* arc = new Arc(0, dst_node_id, 1, arc_cost, NULL);
       Arc* reverse_arc = new Arc(dst_node_id, 0, 0, -arc_cost, arc);
       arc->set_reverse_arc(reverse_arc);
@@ -440,7 +448,7 @@ namespace flowlessly {
   }
 
   uint32_t Graph::addNode(int32_t node_demand, int64_t node_potential,
-                          vector<Arc*>& arcs_from_node) {
+                          const vector<Arc*>& arcs_from_node) {
     uint32_t new_node_id;
     if (deleted_nodes.empty()) {
       ++num_nodes;
@@ -456,7 +464,7 @@ namespace flowlessly {
       potential[new_node_id] = node_potential;
       nodes_demand[new_node_id] = node_demand;
     }
-    for (vector<Arc*>::iterator it = arcs_from_node.begin();
+    for (vector<Arc*>::const_iterator it = arcs_from_node.begin();
          it != arcs_from_node.end(); ++it) {
       Arc* arc = (*it);
       arc->src_node_id = new_node_id;
