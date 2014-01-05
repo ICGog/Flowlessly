@@ -204,7 +204,7 @@ namespace flowlessly {
     }
   }
 
-  uint32_t Graph::get_num_nodes() {
+  uint32_t Graph::get_num_nodes() const {
     return num_nodes;
   }
 

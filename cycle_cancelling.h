@@ -17,9 +17,9 @@ namespace flowlessly {
     Graph& graph_;
 
     // Returns true if it removes a negative cycle.
-    bool removeNegativeCycles(vector<int64_t>& distance,
-                              vector<uint32_t>& predecessor);
-    void augmentFlow(vector<uint32_t>& predecessor,
+    bool removeNegativeCycles(const vector<int64_t>& distance,
+                              const vector<uint32_t>& predecessor);
+    void augmentFlow(const vector<uint32_t>& predecessor,
                      uint32_t src_node, uint32_t dst_node);
 
   };

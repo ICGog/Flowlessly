@@ -31,7 +31,7 @@ namespace flowlessly {
     void logAdmisibleGraph();
     void logResidualGraph();
     void writeGraph(const string& out_graph_file);
-    uint32_t get_num_nodes();
+    uint32_t get_num_nodes() const;
     vector<int32_t>& get_nodes_demand();
     vector<int64_t>& get_potential();
     vector<map<uint32_t, Arc*> >& get_arcs();

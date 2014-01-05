@@ -22,8 +22,9 @@ namespace flowlessly {
       active_nodes.pop();
       while (nodes_demand[node_id] > 0) {
         bool has_neg_cost_arc = false;
+        map<uint32_t, Arc*>::iterator end_it = admisible_arcs[node_id].end();
         for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
-             it != admisible_arcs[node_id].end(); ) {
+             it != end_it; ) {
           map<uint32_t, Arc*>::iterator to_push_it = it;
           ++it;
           if (FLAGS_push_lookahead) {
@@ -55,13 +56,14 @@ namespace flowlessly {
     statistics.update_refine_start_time();
     // Saturate arcs with negative reduced cost.
     ++refine_cnt;
-    uint32_t num_nodes = graph_.get_num_nodes() + 1;
+    const uint32_t num_nodes = graph_.get_num_nodes() + 1;
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
     vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
     // Saturate all the arcs with negative cost.
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
+      map<uint32_t, Arc*>::iterator end_it = admisible_arcs[node_id].end();
       for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
-           it != admisible_arcs[node_id].end(); ) {
+           it != end_it; ) {
         nodes_demand[node_id] -= it->second->cap;
         nodes_demand[it->first] += it->second->cap;
         it->second->reverse_arc->cap += it->second->cap;
@@ -91,7 +93,7 @@ namespace flowlessly {
     //    Establish a feasible flow x in the network
     //    while eps >= 1/n do
     //      (e, f, p) = refine(e, f p)
-    uint32_t num_nodes = graph_.get_num_nodes() + 1;
+    const uint32_t num_nodes = graph_.get_num_nodes() + 1;
     uint32_t eps_iteration_cnt = 0;
     relabel_cnt = 0;
     pushes_cnt = 0;
@@ -123,8 +125,10 @@ namespace flowlessly {
 
   void CostScaling::globalPotentialsUpdate(int64_t eps) {
     statistics.update_global_update_start_time();
-    uint32_t num_nodes = graph_.get_num_nodes();
+    const uint32_t num_nodes = graph_.get_num_nodes();
     vector<int64_t>& potential = graph_.get_potential();
+    vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
+    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     // Variable used to denote an empty bucket.
     // TODO(ionel): Goldberg says that max_rank should be set to eps * n, while
     // in Lemon is set to alpha * n. I think it should be eps * n, however, the
@@ -135,8 +139,6 @@ namespace flowlessly {
     vector<uint32_t> bucket(max_rank + 1, bucket_end);
     vector<uint32_t> bucket_prev(num_nodes + 1, 0);
     vector<uint32_t> bucket_next(num_nodes + 1, 0);
-    vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
-    vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     uint32_t num_active_nodes = 0;
     // Put nodes with negative excess in bucket[0].
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
@@ -213,11 +215,11 @@ namespace flowlessly {
 
   bool CostScaling::priceRefinement(int64_t eps) {
     statistics.update_price_refine_start_time();
-    uint32_t num_nodes = graph_.get_num_nodes();
+    const uint32_t num_nodes = graph_.get_num_nodes();
     vector<int64_t>& potential = graph_.get_potential();
-    uint32_t max_rank = FLAGS_alpha_scaling_factor * num_nodes;
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
+    uint32_t max_rank = FLAGS_alpha_scaling_factor * num_nodes;
     vector<uint32_t> ordered_nodes;
     vector<int64_t> distance(num_nodes + 1, 0);
     uint32_t bucket_end = num_nodes + 1;

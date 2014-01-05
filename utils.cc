@@ -22,7 +22,7 @@ namespace flowlessly {
   // The Complexity of the algorithm is O(E * F). Where F is the max flow value.
   // NOTE: This method changes the graph.
   void maxFlow(Graph& graph) {
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
+    const uint32_t num_nodes = graph.get_num_nodes() + 1;
     vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
     vector<int32_t>& nodes_demand = graph.get_nodes_demand();
     vector<int32_t> visited(num_nodes, 0);
@@ -40,11 +40,10 @@ namespace flowlessly {
       visited[source_node] = nodes_demand[source_node];
       while (!to_visit.empty() && !has_path) {
         uint32_t cur_node = to_visit.front();
-        LOG(INFO) << "Max flow node popped: " << cur_node;
         to_visit.pop();
-        map<uint32_t, Arc*>::iterator it = arcs[cur_node].begin();
         map<uint32_t, Arc*>::iterator end_it = arcs[cur_node].end();
-        for (; it != end_it; ++it) {
+        for (map<uint32_t, Arc*>::iterator it = arcs[cur_node].begin();
+             it != end_it; ++it) {
           if (!visited[it->first] && it->second->cap > 0) {
             visited[it->first] = min(it->second->cap, visited[cur_node]);
             to_visit.push(it->first);
@@ -59,22 +58,18 @@ namespace flowlessly {
                 arc->reverse_arc->cap += min_aux_flow;
                 nodes_demand[predecessor[cur_node]] -= min_aux_flow;
                 nodes_demand[cur_node] += min_aux_flow;
-                LOG(INFO) << "Flow path: (" << predecessor[cur_node] << ", "
-                          << cur_node << ") " << min_aux_flow;
               }
               break;
             }
           }
         }
       }
-      LOG(INFO) << "The graph after another iteration of max flow.";
-      graph.logGraph();
     }
   }
 
   void BellmanFord(Graph& graph, const set<uint32_t>& source_nodes,
                    vector<int64_t>& distance, vector<uint32_t>& predecessor) {
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
+    const uint32_t num_nodes = graph.get_num_nodes() + 1;
     const vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
     for (set<uint32_t>::const_iterator it = source_nodes.begin();
          it != source_nodes.end(); ++it) {
@@ -85,9 +80,9 @@ namespace flowlessly {
       relaxed = false;
       for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
         if (distance[node_id] < numeric_limits<int32_t>::max()) {
-          map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
           map<uint32_t, Arc*>::const_iterator end_it = arcs[node_id].end();
-          for (; it != end_it; ++it) {
+          for (map<uint32_t, Arc*>::const_iterator it = arcs[node_id].begin();
+               it != end_it; ++it) {
             if (it->second->cap > 0 &&
                 distance[node_id] + it->second->cost < distance[it->first]) {
               distance[it->first] = distance[node_id] + it->second->cost;
@@ -103,9 +98,9 @@ namespace flowlessly {
   void DijkstraSimple(Graph& graph, const set<uint32_t>& source_nodes,
                       vector<int64_t>& distance,
                       vector<uint32_t>& predecessor) {
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
-    vector<bool> node_used(num_nodes, false);
+    const uint32_t num_nodes = graph.get_num_nodes() + 1;
     const vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
+    vector<bool> node_used(num_nodes, false);
     // Works with the assumption that all the elements of distance are
     // already set to INF.
     for (set<uint32_t>::const_iterator it = source_nodes.begin();
@@ -123,9 +118,9 @@ namespace flowlessly {
         }
       }
       node_used[min_node_id] = true;
-      map<uint32_t, Arc*>::const_iterator it = arcs[min_node_id].begin();
       map<uint32_t, Arc*>::const_iterator end_it = arcs[min_node_id].end();
-      for (; it != end_it; ++it) {
+      for (map<uint32_t, Arc*>::const_iterator it = arcs[min_node_id].begin();
+           it != end_it; ++it) {
         if (it->second->cap > 0 &&
             distance[min_node_id] + it->second->cost < distance[it->first]) {
           distance[it->first] = distance[min_node_id] + it->second->cost;
@@ -138,7 +133,7 @@ namespace flowlessly {
   void DijkstraOptimized(Graph& graph, const set<uint32_t>& source_nodes,
                          vector<int64_t>& distance,
                          vector<uint32_t>& predecessor) {
-    uint32_t num_nodes = graph.get_num_nodes() + 1;
+    const uint32_t num_nodes = graph.get_num_nodes() + 1;
     const vector<map<uint32_t, Arc*> >& arcs = graph.get_arcs();
     vector<bool> visited(num_nodes, false);
     binomial_heap<pair<int64_t, uint32_t>,
@@ -158,11 +153,10 @@ namespace flowlessly {
       pair<int64_t, uint32_t> min_dist = dist_heap.top();
       int32_t min_cost = min_dist.first;
       uint32_t min_node_id = min_dist.second;
-      LOG(INFO) << min_node_id;
       dist_heap.pop();
-      map<uint32_t, Arc*>::const_iterator it = arcs[min_node_id].begin();
       map<uint32_t, Arc*>::const_iterator end_it = arcs[min_node_id].end();
-      for (; it != end_it; ++it) {
+      for (map<uint32_t, Arc*>::const_iterator it = arcs[min_node_id].begin();
+           it != end_it; ++it) {
         if (it->second->cap > 0 &&
             distance[min_node_id] + it->second->cost < distance[it->first]) {
           distance[it->first] = distance[min_node_id] + it->second->cost;
