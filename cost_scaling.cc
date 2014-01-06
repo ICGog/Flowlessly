@@ -88,17 +88,13 @@ namespace flowlessly {
   }
 
   void CostScaling::costScaling() {
-    //    eps = max arc cost
-    //    potential(v) = 0
-    //    Establish a feasible flow x in the network
-    //    while eps >= 1/n do
-    //      (e, f, p) = refine(e, f p)
     const uint32_t num_nodes = graph_.get_num_nodes() + 1;
+    const int64_t scaling_factor = FLAGS_alpha_scaling_factor * num_nodes;
     uint32_t eps_iteration_cnt = 0;
     relabel_cnt = 0;
     pushes_cnt = 0;
     refine_cnt = 0;
-    for (int64_t eps = graph_.scaleUpCosts(FLAGS_alpha_scaling_factor * num_nodes) /
+    for (int64_t eps = graph_.scaleUpCosts(scaling_factor) /
            FLAGS_alpha_scaling_factor; eps >= 1;
          eps = eps < FLAGS_alpha_scaling_factor && eps > 1 ?
            1 : eps / FLAGS_alpha_scaling_factor, ++eps_iteration_cnt) {
@@ -117,7 +113,7 @@ namespace flowlessly {
     if (FLAGS_arc_fixing) {
       graph_.arcsUnfixing(numeric_limits<int64_t>::max());
     }
-    graph_.scaleDownCosts(FLAGS_alpha_scaling_factor * num_nodes);
+    graph_.scaleDownCosts(scaling_factor);
     LOG(INFO) << "Num relables: " << relabel_cnt;
     LOG(INFO) << "Num pushes: " << pushes_cnt;
     LOG(INFO) << "Num refines: " << refine_cnt;

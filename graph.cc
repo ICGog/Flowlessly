@@ -700,4 +700,59 @@ namespace flowlessly {
     return true;
   }
 
+  bool Graph::checkEqual(Graph& other) {
+    if (num_nodes != other.get_num_nodes()) {
+      LOG(ERROR) << "The graphs have different number of nodes";
+      return false;
+    }
+    vector<int32_t>& other_nodes_demand = other.get_nodes_demand();
+    vector<int64_t>& other_potential = other.get_potential();
+    vector<map<uint32_t, Arc*> >& other_arcs = other.get_arcs();
+    vector<map<uint32_t, Arc*> >& other_admisible_arcs =
+      other.get_admisible_arcs();
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      if (nodes_demand[node_id] != other_nodes_demand[node_id]) {
+        LOG(ERROR) << "Nodes demand differs for " << node_id;
+        return false;
+      }
+      if (potential[node_id] != other_potential[node_id]) {
+        LOG(ERROR) << "Potentials differ for " << node_id;
+      }
+      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        if (other_arcs[node_id].find(it->first) == other_arcs[node_id].end()) {
+          LOG(ERROR) << "Arc (" << node_id << "," << it->first
+                     << ") not present in the 2nd graph";
+          return false;
+        }
+      }
+      for (map<uint32_t, Arc*>::iterator it = other_arcs[node_id].begin();
+           it != other_arcs[node_id].end(); ++it) {
+        if (arcs[node_id].find(it->first) == arcs[node_id].end()) {
+          LOG(ERROR) << "Arc (" << node_id << "," << it->first
+                     << ") not present in the 1st graph";
+          return false;
+        }
+      }
+      for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
+           it != admisible_arcs[node_id].end(); ++it) {
+        if (other_admisible_arcs[node_id].find(it->first) ==
+            other_admisible_arcs[node_id].end()) {
+          LOG(ERROR) << "Arc (" << node_id << "," << it->first
+                     << ") not present in the 2nd admisible graph";
+          return false;
+        }
+      }
+      for (map<uint32_t, Arc*>::iterator it = other_admisible_arcs[node_id].begin();
+           it != other_admisible_arcs[node_id].end(); ++it) {
+        if (admisible_arcs[node_id].find(it->first) ==
+            admisible_arcs[node_id].end()) {
+          LOG(ERROR) << "Arc (" << node_id << "," << it->first
+                     << ") not present in the 1st admisible graph";
+          return false;
+        }
+      }
+    }
+  }
+
 }

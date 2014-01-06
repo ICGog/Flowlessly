@@ -44,6 +44,7 @@ namespace flowlessly {
     bool checkFlow(const string& flow_file);
     bool checkEpsOptimality(int64_t eps);
     bool checkValid();
+    bool checkEqual(Graph& other);
 
     bool hasSinkAndSource();
     void removeSinkAndSource();
