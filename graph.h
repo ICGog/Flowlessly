@@ -66,6 +66,7 @@ namespace flowlessly {
     void scaleDownCosts(int64_t scale_down);
     int64_t getRefinePotential(uint64_t node_id, int64_t eps);
     void resetPotentials();
+    void resetGraph();
 
   private:
     void allocateGraphMemory(uint32_t num_nodes);

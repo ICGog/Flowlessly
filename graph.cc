@@ -636,6 +636,33 @@ namespace flowlessly {
     }
   }
 
+  void Graph::resetGraph() {
+    if (FLAGS_arc_fixing) {
+      for (list<Arc*>::iterator it = fixed_arcs.begin(); it != fixed_arcs.end();
+           ++it) {
+        arcs[(*it)->src_node_id][(*it)->dst_node_id] = *it;
+      }
+      fixed_arcs.clear();
+    }
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      admisible_arcs[node_id].clear();
+      map<uint32_t, Arc*>::iterator end_it = arcs[node_id].end();
+      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+           it != end_it; ++it) {
+        Arc* arc = it->second;
+        if (arc->cap < arc->initial_cap) {
+          nodes_demand[arc->src_node_id] += arc->initial_cap - arc->cap;
+          nodes_demand[arc->dst_node_id] -= arc->initial_cap - arc->cap;
+          arc->cap = arc->initial_cap;
+        }
+        if (arc->cap > arc->initial_cap) {
+          arc->cap = 0;
+        }
+      }
+      potential[node_id] = 0;
+    }
+  }
+
   bool Graph::checkValid() {
     int64_t total_demand = 0;
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
