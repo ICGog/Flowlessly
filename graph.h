@@ -30,6 +30,7 @@ namespace flowlessly {
     void logGraph();
     void logAdmisibleGraph();
     void logResidualGraph();
+    void writeFlowGraph(const string& out_graph_file);
     void writeGraph(const string& out_graph_file);
 
     uint32_t get_num_nodes() const;

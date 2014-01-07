@@ -43,6 +43,8 @@ namespace flowlessly {
           Arc* arc = new Arc(src_node, dst_node, arc_capacity, arc_cost, NULL);
           Arc* reverse_arc = new Arc(dst_node, src_node, 0, -arc_cost, arc);
           arc->set_reverse_arc(reverse_arc);
+          arc->cap -= arc_min_flow;
+          arc->reverse_arc->cap += arc_min_flow;
           arcs[src_node][dst_node] = arc;
           arcs[dst_node][src_node] = reverse_arc;
         } else if (vals[0].compare("n") == 0) {
@@ -142,7 +144,7 @@ namespace flowlessly {
     return true;
   }
 
-  void Graph::writeGraph(const string& out_graph_file) {
+  void Graph::writeFlowGraph(const string& out_graph_file) {
     int64_t min_cost = 0;
     FILE *graph_file = NULL;
     if ((graph_file = fopen(out_graph_file.c_str(), "w")) == NULL) {
@@ -159,6 +161,38 @@ namespace flowlessly {
       }
     }
     fprintf(graph_file, "s %jd\n", min_cost);
+    fclose(graph_file);
+  }
+
+  void Graph::writeGraph(const string& out_graph_file) {
+    FILE *graph_file = NULL;
+    if ((graph_file = fopen(out_graph_file.c_str(), "w")) == NULL) {
+      LOG(ERROR) << "Could no open graph file for writing: " << out_graph_file;
+    }
+    uint32_t num_arcs = 0;
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        if (it->second->cap <= it->second->initial_cap &&
+            it->second->initial_cap > 0) {
+          ++num_arcs;
+        }
+      }
+    }
+    fprintf(graph_file, "p min %u %u\n", num_nodes, num_arcs);
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      fprintf(graph_file, "n %u %d\n", node_id, nodes_demand[node_id]);
+    }
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        Arc* arc = it->second;
+        if (arc->cap <= arc->initial_cap && arc->initial_cap > 0) {
+          fprintf(graph_file, "a %u %u %u %u %jd\n", node_id, it->first,
+                  arc->initial_cap - arc->cap, arc->initial_cap, arc->cost);
+        }
+      }
+    }
     fclose(graph_file);
   }
 

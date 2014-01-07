@@ -126,7 +126,7 @@ int main(int argc, char *argv[]) {
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
   double write_start_time = stats.getTime();
-  graph.writeGraph(FLAGS_out_graph_file);
+  graph.writeFlowGraph(FLAGS_out_graph_file);
   double write_end_time = stats.getTime();
   LOG(INFO) << "Read time: " << read_end_time - read_start_time;
   LOG(INFO) << "Write time: " << write_end_time - write_start_time;
