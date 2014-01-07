@@ -11,7 +11,7 @@ namespace flowlessly {
   CycleCancelling(Graph& graph): graph_(graph) {
     }
 
-    void cycleCancelling();
+    void cycleCancelling(bool has_flow);
 
   private:
     Graph& graph_;

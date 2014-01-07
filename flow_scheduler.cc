@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
     } else if (!FLAGS_algorithm.compare("cycle_cancelling")) {
       LOG(INFO) << "------------ Cycle cancelling min cost flow ------------";
       CycleCancelling cycle_cancelling(graph);
-      cycle_cancelling.cycleCancelling();
+      cycle_cancelling.cycleCancelling(false);
     } else if (!FLAGS_algorithm.compare("successive_shortest_path")) {
       LOG(INFO) << "------------ Successive shortest path min cost flow "
                 << "------------";

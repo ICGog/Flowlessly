@@ -543,6 +543,25 @@ namespace flowlessly {
     return num_removed;
   }
 
+  // Returns the number of arcs whose cost has been changed.
+  uint32_t Graph::changeArcCosts(uint16_t percentage) {
+    uint32_t num_changed = 0;
+    for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
+      for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
+           it != arcs[node_id].end(); ++it) {
+        Arc* arc = it->second;
+        if (arc->cap <= arc->initial_cap && arc->initial_cap > 0 &&
+            rand() % 100 < percentage) {
+          int64_t arc_cost = rand() % 10 + 1;
+          arc->cost = arc_cost;
+          arc->reverse_arc->cost = -arc_cost;
+          ++num_changed;
+        }
+      }
+    }
+    return num_changed;
+  }
+
   void Graph::nodeArcsFixing(uint32_t node_id, int64_t fix_threshold) {
     for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
          it != arcs[node_id].end(); ) {
