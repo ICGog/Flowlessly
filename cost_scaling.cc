@@ -141,7 +141,9 @@ namespace flowlessly {
       if (nodes_demand[node_id] < 0) {
         rank[node_id] = 0;
         bucket_next[node_id] = bucket[0];
-        bucket_prev[bucket[0]] = node_id;
+        if (bucket[0] != bucket_end) {
+          bucket_prev[bucket[0]] = node_id;
+        }
         bucket[0] = node_id;
       } else {
         rank[node_id] = max_rank + 1;
@@ -186,7 +188,9 @@ namespace flowlessly {
                 }
                 // Insert into the new bucket.
                 bucket_next[it->first] = bucket[k];
-                bucket_prev[bucket[k]] = it->first;
+                if (bucket[k] != bucket_end) {
+                  bucket_prev[bucket[k]] = it->first;
+                }
                 bucket[k] = it->first;
               }
             }
@@ -244,7 +248,9 @@ namespace flowlessly {
         uint32_t bucket_index = -d_node_it;
         if (bucket_index > 0) {
           bucket_next[*node_it] = bucket[bucket_index];
-          bucket_prev[bucket[bucket_index]] = *node_it;
+          if (bucket[bucket_index] != bucket_end) {
+            bucket_prev[bucket[bucket_index]] = *node_it;
+          }
           bucket[bucket_index] = *node_it;
           if (bucket_index > top_rank) {
             top_rank = bucket_index;
@@ -288,7 +294,9 @@ namespace flowlessly {
                   }
                   // Insert into new bucket.
                   bucket_next[it->first] = bucket[-new_distance];
-                  bucket_prev[bucket[-new_distance]] = it->first;
+                  if (bucket[-new_distance] != bucket_end) {
+                    bucket_prev[bucket[-new_distance]] = it->first;
+                  }
                   bucket[-new_distance] = it->first;
                 }
               }
