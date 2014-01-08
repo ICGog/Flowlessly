@@ -54,6 +54,8 @@ namespace flowlessly {
     uint32_t addTaskNode();
     uint32_t addNode(int32_t node_demand, int64_t node_potential,
                      const vector<Arc*>& arcs_from_node);
+    uint32_t removeTaskNode();
+    bool removeTaskNode(uint32_t node_id);
     uint32_t removeTaskNodes(uint16_t percentage);
     uint32_t changeArcCosts(uint16_t percentage);
     void removeNodeFromFixedArcs(uint32_t node_id);

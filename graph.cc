@@ -498,6 +498,7 @@ namespace flowlessly {
       potential[new_node_id] = node_potential;
       nodes_demand[new_node_id] = node_demand;
     }
+    //    int64_t new_node_potential = 0;
     for (vector<Arc*>::const_iterator it = arcs_from_node.begin();
          it != arcs_from_node.end(); ++it) {
       Arc* arc = (*it);
@@ -513,7 +514,12 @@ namespace flowlessly {
       if (-reduced_cost < 0 && arc->reverse_arc->cap > 0) {
         admisible_arcs[arc->dst_node_id][arc->src_node_id] = arc->reverse_arc;
       }
+      // TODO(ionel): Can not set new node potential because the costs have been
+      // scalled down while the potentials have not.
+      //      new_node_potential = min(new_node_potential,
+      //                               potential[arc->dst_node_id] - arc->cost - 1);
     }
+    //    potential[new_node_id] = new_node_potential;
     if (FLAGS_arc_fixing) {
       nodeArcsFixing(new_node_id, last_fixing_threshold);
     }
@@ -524,6 +530,22 @@ namespace flowlessly {
       sink_nodes.insert(new_node_id);
     }
     return new_node_id;
+  }
+
+  uint32_t Graph::removeTaskNode() {
+    uint32_t node_id = rand() % num_nodes + 1;
+    while (task_nodes.find(node_id) == task_nodes.end()) {
+      node_id = rand() % num_nodes + 1;
+    }
+    removeNode(node_id);
+  }
+
+  bool Graph::removeTaskNode(uint32_t node_id) {
+    if (task_nodes.find(node_id) == task_nodes.end()) {
+      return false;
+    }
+    removeNode(node_id);
+    return true;
   }
 
   uint32_t Graph::removeTaskNodes(uint16_t percentage) {
