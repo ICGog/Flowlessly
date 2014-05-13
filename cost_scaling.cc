@@ -393,7 +393,7 @@ namespace flowlessly {
     vector<int64_t>& potential = graph_.get_potential();
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    int64_t refine_pot = graph_.getRefinePotential(node_id, eps);
+    int64_t refine_pot = graph_.get_refine_potential(node_id, eps);
     //    int64_t refine_pot = eps;
     for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
          n_it != arcs[node_id].end(); ++n_it) {

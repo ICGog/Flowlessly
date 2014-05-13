@@ -8,6 +8,10 @@ namespace flowlessly {
   class Arc {
 
   public:
+    /**
+     * Default constructor for the arc class. It creates an arc with 0 capacity
+     * and cost.
+     **/
   Arc(): cap(0), initial_cap(0), cost(0) {
     }
 
@@ -15,6 +19,9 @@ namespace flowlessly {
      * Class representing an arc.
      * @param src_id source vertex id
      * @param dst_id destionation vertex id
+     * @param capacity the capacity of the arc
+     * @param cst the cost of the arc
+     * @param rvrd_arc reverse arc
      **/
   Arc(uint32_t src_id, uint32_t dst_id, int32_t capacity, int64_t cst,
       Arc* rvrd_arc): src_node_id(src_id), dst_node_id(dst_id),

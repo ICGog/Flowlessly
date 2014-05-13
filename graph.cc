@@ -282,10 +282,15 @@ namespace flowlessly {
   }
 
   bool Graph::hasSinkAndSource() {
-    return added_sink_and_source;
+    return added_sink_and_source ||
+      (source_nodes.size() == 1 && sink_nodes.size() == 1);
   }
 
-  void Graph::addSinkAndSource() {
+  bool Graph::addSinkAndSource() {
+    if (added_sink_and_source) {
+      LOG(ERROR) << "The graph already has single source and sink nodes";
+      return false;
+    }
     added_sink_and_source = true;
     num_nodes += 2;
     arcs.resize(num_nodes + 1);
@@ -317,9 +322,15 @@ namespace flowlessly {
       nodes_demand[num_nodes] += nodes_demand[*it];
       nodes_demand[*it] = 0;
     }
+    return true;
   }
 
-  void Graph::removeSinkAndSource() {
+  bool Graph::removeSinkAndSource() {
+    if (added_sink_and_source == false) {
+      LOG(ERROR) << "Cannot remove sink and source because the graph "
+                 << "doesn't have a single source or sink";
+      return false;
+    }
     for (map<uint32_t, Arc*>::iterator it = arcs[num_nodes - 1].begin();
          it != arcs[num_nodes - 1].end(); ++it) {
       nodes_demand[it->first] += it->second->initial_cap - it->second->cap;
@@ -343,6 +354,7 @@ namespace flowlessly {
     potential.pop_back();
     single_source_node.clear();
     single_sink_node.clear();
+    return true;
   }
 
   // Construct a topological order of the admisible graph.
@@ -686,7 +698,7 @@ namespace flowlessly {
   }
 
   // Get the max refine potential that can be used in the relabel.
-  int64_t Graph::getRefinePotential(uint64_t node_id, int64_t eps) {
+  int64_t Graph::get_refine_potential(uint64_t node_id, int64_t eps) {
     int64_t new_pot = numeric_limits<int64_t>::min();
     for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
          n_it != arcs[node_id].end(); ++n_it) {
