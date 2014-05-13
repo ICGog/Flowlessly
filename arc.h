@@ -11,6 +11,11 @@ namespace flowlessly {
   Arc(): cap(0), initial_cap(0), cost(0) {
     }
 
+    /**
+     * Class representing an arc.
+     * @param src_id source vertex id
+     * @param dst_id destionation vertex id
+     **/
   Arc(uint32_t src_id, uint32_t dst_id, int32_t capacity, int64_t cst,
       Arc* rvrd_arc): src_node_id(src_id), dst_node_id(dst_id),
       cap(capacity), initial_cap(capacity), cost(cst), reverse_arc(rvrd_arc) {

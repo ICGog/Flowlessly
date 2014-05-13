@@ -22,6 +22,7 @@ namespace flowlessly {
   Graph(Statistics& stats): statistics(stats) {
       added_sink_and_source = false;
       last_fixing_threshold = numeric_limits<int64_t>::max();
+      // Assummes that Cluster Aggregate vertex has id 1 and sink has id 2.
       cluster_agg_id = 1;
       sink_id = 2;
     }

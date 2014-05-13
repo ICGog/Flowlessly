@@ -10,9 +10,8 @@
 
 using namespace flowlessly;
 
-DEFINE_string(graph_file, "graph.in", "File containing the input graph.");
-DEFINE_string(out_graph_file, "graph.out",
-              "File the output graph will be written");
+DEFINE_string(graph_file, "graph.in", "Input graph file.");
+DEFINE_string(out_graph_file, "graph.out", "Output graph file.");
 DEFINE_string(algorithm, "cycle_cancelling",
               "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path, cost_scaling, check_flow");
 DEFINE_int64(alpha_scaling_factor, 2,
@@ -22,12 +21,16 @@ DEFINE_bool(global_update, true, "Activate global update heuristic");
 DEFINE_bool(price_refinement, true, "Activate price refinement heuristic");
 DEFINE_bool(push_lookahead, true, "Activate push lookahead heuristic");
 DEFINE_bool(arc_fixing, true, "Activate arc fixing heuristic");
-DEFINE_int64(arc_fixing_threshold, 3, "After how many refines to start fixing arcs");
-DEFINE_int64(price_refine_threshold, 3, "After how many iterations to start price refinement");
+DEFINE_int64(arc_fixing_threshold, 3,
+             "After how many refines to start fixing arcs");
+DEFINE_int64(price_refine_threshold, 3,
+             "After how many iterations to start price refinement");
 DEFINE_bool(incremental, false, "Activate incremental tests");
-DEFINE_int64(task_completion_percentage, 0, "Task that are completed in each scheduling iteration");
-DEFINE_bool(log_statistics, false, "Log various statistics such as time");
-DEFINE_int64(num_preference_arcs, 20, "Number of preference arcs.");
+DEFINE_int64(num_iterations, 2, "Number of scheduling iterations");
+DEFINE_int64(task_completion_percentage, 0,
+             "Percentage of completed tasks in each scheduling iteration");
+DEFINE_bool(log_statistics, false, "Log statistics flag");
+DEFINE_int64(num_preference_arcs, 20, "Number of preference arcs");
 
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
@@ -44,6 +47,28 @@ inline void init(int argc, char *argv[]) {
   google::InitGoogleLogging(argv[0]);
 }
 
+void runBellmanFord(Graph& graph) {
+  LOG(INFO) << "------------ BellmanFord ------------";
+  uint32_t num_nodes = graph.get_num_nodes() + 1;
+  vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
+  vector<uint32_t> predecessor(num_nodes, 0);
+  BellmanFord(graph, graph.get_source_nodes(), distance, predecessor);
+  logCosts(distance, predecessor);
+}
+
+void runDijkstra(Graph& graph, bool with_heaps) {
+  LOG(INFO) << "------------ Dijkstra ------------";
+  uint32_t num_nodes = graph.get_num_nodes() + 1;
+  vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
+  vector<uint32_t> predecessor(num_nodes, 0);
+  if (with_heaps) {
+    DijkstraOptimized(graph, graph.get_source_nodes(), distance, predecessor);
+  } else {
+    DijkstraSimple(graph, graph.get_source_nodes(), distance, predecessor);
+  }
+  logCosts(distance, predecessor);
+}
+
 int main(int argc, char *argv[]) {
   init(argc, argv);
   FLAGS_logtostderr = true;
@@ -53,33 +78,18 @@ int main(int argc, char *argv[]) {
   double read_start_time = stats.getTime();
   graph.readGraph(FLAGS_graph_file);
   double read_end_time = stats.getTime();
-  uint32_t num_iterations = 1;
+  int32_t num_iterations = 1;
   if (FLAGS_incremental) {
-    num_iterations = 2;
+    num_iterations = FLAGS_num_iterations;
   }
   for (; num_iterations > 0; --num_iterations) {
     double algo_start_time = stats.getTime();
     if (!FLAGS_algorithm.compare("bellman_ford")) {
-      LOG(INFO) << "------------ BellmanFord ------------";
-      uint32_t num_nodes = graph.get_num_nodes() + 1;
-      vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
-      vector<uint32_t> predecessor(num_nodes, 0);
-      BellmanFord(graph, graph.get_source_nodes(), distance, predecessor);
-      logCosts(distance, predecessor);
+      runBellmanFord(graph);
     } else if (!FLAGS_algorithm.compare("dijkstra")) {
-      LOG(INFO) << "------------ Dijkstra ------------";
-      uint32_t num_nodes = graph.get_num_nodes() + 1;
-      vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
-      vector<uint32_t> predecessor(num_nodes, 0);
-      DijkstraSimple(graph, graph.get_source_nodes(), distance, predecessor);
-      logCosts(distance, predecessor);
+      runDijkstra(graph, false);
     } else if (!FLAGS_algorithm.compare("dijkstra_heap")) {
-      LOG(INFO) << "------------ Dijkstra with heaps ------------";
-      uint32_t num_nodes = graph.get_num_nodes() + 1;
-      vector<int64_t> distance(num_nodes, numeric_limits<int64_t>::max());
-      vector<uint32_t> predecessor(num_nodes, 0);
-      DijkstraOptimized(graph, graph.get_source_nodes(), distance, predecessor);
-      logCosts(distance, predecessor);
+      runDijkstra(graph, true);
     } else if (!FLAGS_algorithm.compare("cycle_cancelling")) {
       LOG(INFO) << "------------ Cycle cancelling min cost flow ------------";
       CycleCancelling cycle_cancelling(graph);
@@ -105,6 +115,7 @@ int main(int argc, char *argv[]) {
       }
       if (graph.checkFlow(FLAGS_flow_file)) {
         LOG(INFO) << "Flow is valid";
+        // TODO(ionel): Check eps optimality as well.
       } else {
         LOG(ERROR) << "Flow is not valid";
       }

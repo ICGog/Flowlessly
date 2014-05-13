@@ -35,6 +35,7 @@ namespace flowlessly {
         line_num++;
         boost::split(vals, line, is_any_of(" "), token_compress_on);
         if (vals[0].compare("a") == 0) {
+          // The line contains an arc.
           uint32_t src_node = lexical_cast<uint32_t>(vals[1]);
           uint32_t dst_node = lexical_cast<uint32_t>(vals[2]);
           int32_t arc_min_flow = lexical_cast<int32_t>(vals[3]);
@@ -48,6 +49,7 @@ namespace flowlessly {
           arcs[src_node][dst_node] = arc;
           arcs[dst_node][src_node] = reverse_arc;
         } else if (vals[0].compare("n") == 0) {
+          // The line contains a node.
           uint32_t node_id = lexical_cast<uint32_t>(vals[1]);
           nodes_demand[node_id] = lexical_cast<int32_t>(vals[2]);
           if (nodes_demand[node_id] > 0) {
@@ -71,6 +73,7 @@ namespace flowlessly {
     fclose(graph_file);
   }
 
+  // Check if flow is valid. It does not check if the flow is the min cost flow.
   bool Graph::checkFlow(const string& flow_file_path) {
     FILE* flow_file = NULL;
     if ((flow_file = fopen(flow_file_path.c_str(), "r")) == NULL) {
@@ -288,8 +291,11 @@ namespace flowlessly {
     arcs.resize(num_nodes + 1);
     nodes_demand.resize(num_nodes + 1);
     potential.resize(num_nodes + 1);
+    // Source node has id num_nodes - 1
     single_source_node.insert(num_nodes - 1);
+    // Sink node has id num_nodes
     single_sink_node.insert(num_nodes);
+    // Add arc from every previous source node to the new single source node.
     for (set<uint32_t>::iterator it = source_nodes.begin();
          it != source_nodes.end(); ++it) {
       Arc* arc = new Arc(num_nodes - 1, *it, nodes_demand[*it], 0, NULL);
@@ -300,6 +306,7 @@ namespace flowlessly {
       nodes_demand[num_nodes - 1] += nodes_demand[*it];
       nodes_demand[*it] = 0;
     }
+    // Add arc from every previous sink node to the new single sink node.
     for (set<uint32_t>::iterator it = sink_nodes.begin();
          it != sink_nodes.end(); ++it) {
       Arc* arc = new Arc(num_nodes, *it, 0, 0, NULL);
@@ -342,7 +349,7 @@ namespace flowlessly {
   bool Graph::orderTopologically(vector<uint32_t>& ordered) {
     stack<uint32_t> to_visit;
     // 0 - node not visited.
-    // 1 - node visited but didn't finished yet all its subtrees.
+    // 1 - node visited but didn't finish yet all its subtrees.
     // 2 - node visited completly.
     vector<uint8_t> marked(num_nodes + 1, 0);
     list<uint32_t> ordered_list;
