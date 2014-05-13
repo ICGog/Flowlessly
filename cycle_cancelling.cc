@@ -8,16 +8,13 @@ namespace flowlessly {
 
   using namespace std;
 
-  // Applies the Cycle cancelling algorithm to compute the min cost flow.
-  // The complexity is O(F * M + N * M^2 * C * U)
-  // NOTE: It changes the graph.
+  //    Establish a feasible flow x in the network
+  //    while ( Gx contains a negative cycle ) do
+  //        identify a negative cycle W
+  //        mr = min(r(i,j)) where (i,j) is part of W
+  //        augment mr units of flow along the cycle W
+  //        update Gx
   void CycleCancelling::cycleCancelling(bool has_flow) {
-    //    Establish a feasible flow x in the network
-    //    while ( Gx contains a negative cycle ) do
-    //        identify a negative cycle W
-    //        mr = min(r(i,j)) where (i,j) is part of W
-    //        augment mr units of flow along the cycle W
-    //        update Gx
     if (!has_flow) {
       if (!graph_.hasSinkAndSource()) {
         graph_.addSinkAndSource();

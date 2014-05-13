@@ -441,12 +441,10 @@ namespace flowlessly {
     admisible_arcs[node_id].clear();
   }
 
-  // It can not remove sink or cluster agg nodes.
-  // Do not decrease num_nodes because we can remove a node with a random id.
-  void Graph::removeNode(uint32_t node_id) {
+  bool Graph::removeNode(uint32_t node_id) {
     if (node_id == cluster_agg_id || node_id == sink_id) {
       LOG(ERROR) << "Can not remove sink or cluster agg node";
-      return;
+      return false;
     }
     if (FLAGS_arc_fixing) {
       removeNodeFromFixedArcs(node_id);
@@ -461,6 +459,7 @@ namespace flowlessly {
     deleted_nodes.insert(node_id);
     nodes_demand[node_id] = 0;
     potential[node_id] = 0;
+    return true;
   }
 
   int64_t Graph::generateArcCost() {
@@ -673,8 +672,6 @@ namespace flowlessly {
     statistics.update_arcs_unfixing_end_time();
   }
 
-  // Scales up costs by alpha * num_nodes
-  // It returns the value from where eps should start.
   int64_t Graph::scaleUpCosts(int64_t scale_up) {
     int64_t max_cost_arc = numeric_limits<int64_t>::min();
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
@@ -697,7 +694,6 @@ namespace flowlessly {
     }
   }
 
-  // Get the max refine potential that can be used in the relabel.
   int64_t Graph::get_refine_potential(uint64_t node_id, int64_t eps) {
     int64_t new_pot = numeric_limits<int64_t>::min();
     for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();

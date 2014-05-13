@@ -7,6 +7,10 @@ DECLARE_bool(log_statistics);
 
 namespace flowlessly {
 
+  /**
+   * Stores statistics related to various operations such as:
+   * total time spent relabeling, total time spent arc fixing etc.
+   **/
   class Statistics {
 
   public:

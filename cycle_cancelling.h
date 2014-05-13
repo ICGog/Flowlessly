@@ -5,12 +5,20 @@
 
 namespace flowlessly {
 
+  /**
+   * Implements the cycle cancelling min cost maximum flow algorithm.
+   */
   class CycleCancelling {
 
   public:
   CycleCancelling(Graph& graph): graph_(graph) {
     }
 
+    /**
+     * Applies the Cycle cancelling algorithm to compute the min cost flow.
+     * The complexity is O(F * M + N * M^2 * C * U).
+     * NOTE: It changes the graph.
+     **/
     void cycleCancelling(bool has_flow);
 
   private:

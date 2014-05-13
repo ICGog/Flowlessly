@@ -47,6 +47,14 @@ inline void init(int argc, char *argv[]) {
   google::InitGoogleLogging(argv[0]);
 }
 
+/*! \mainpage Flowlessly Documentation
+ * Welcome to the documentation page of Flowlessly.
+ */
+
+//! Flowlessly namespace.
+namespace flowlessly {
+}
+
 void runBellmanFord(Graph& graph) {
   LOG(INFO) << "------------ BellmanFord ------------";
   uint32_t num_nodes = graph.get_num_nodes() + 1;

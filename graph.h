@@ -96,49 +96,146 @@ namespace flowlessly {
     bool checkEqual(Graph& other);
 
     /**
-     * Check if the graph has single source and single sink.
+     * Checks if the graph has single source and single sink.
      **/
     bool hasSinkAndSource();
 
     /**
-     * Remove added source and sink nodes.
+     * Removes added source and sink nodes.
      * @return true if the source and sink have succesfully been removed.
      **/
     bool removeSinkAndSource();
 
     /**
-     * Add single source and sink nodes. The source will have id num_nodes and
+     * Adds single source and sink nodes. The source will have id num_nodes and
      * the sink will have id num_nodes + 1.
      **/
     bool addSinkAndSource();
 
-    void removeNode(uint32_t node_id);
+    /**
+     * Removes node from graph. It can not remove sink or cluster aggregator
+     * node. It does not change the number of nodes. It simply deletes all the
+     * arcs and sets the demand and potential to 0.
+     * @param node_id the id of the node to be removed
+     * @return true if the node was successfully removed
+     **/
+    bool removeNode(uint32_t node_id);
+
+    /**
+     * Adds a new task node to the graph. The node is connected to the
+     * aggregator node and to FLAGS_num_preference_arcs randomly selected
+     * resource nodes.
+     * @return the id of the new node
+     **/
     uint32_t addTaskNode();
+
+    /**
+     * Adds a new node to the graph.
+     * @param node_demand the demand of the new node
+     * @param node_potential the potential of the new node
+     * @param arcs_from_node outgoing arcs from the node
+     * @return the id of the new node
+     **/
     uint32_t addNode(int32_t node_demand, int64_t node_potential,
                      const vector<Arc*>& arcs_from_node);
-    uint32_t removeTaskNode();
-    bool removeTaskNode(uint32_t node_id);
-    uint32_t removeTaskNodes(uint16_t percentage);
-    uint32_t changeArcCosts(uint16_t percentage);
-    void removeNodeFromFixedArcs(uint32_t node_id);
-    void removeArcs(uint32_t node_id);
-    int64_t generateArcCost();
-    uint32_t generateResourceNodeId();
 
-    void nodeArcsFixing(uint32_t node_id, int64_t fix_threshold);
+    /**
+     * Removes a randomly selected task node from the graph.
+     * NOTE: It does not change the number of nodes. It simply deletes all the
+     * arcs and sets the demand and potential to 0.
+     * @return the id of the removed node
+     **/
+    uint32_t removeTaskNode();
+
+    /**
+     * Removes a task node from the graph.
+     * NOTE: It does not change the number of nodes. It simply deletes all the
+     * arcs and sets the demand and potential to 0.
+     * @param node_id the id of the node to be removed
+     * @return true if the node has successfully been removed
+     **/
+    bool removeTaskNode(uint32_t node_id);
+
+    /**
+     * Removes a percentage of the task nodes.
+     * NOTE: It does not change the number of nodes. It simply deletes all the
+     * arcs and sets the demand and potential to 0.
+     * @param percentage the percentage of task nodes to remove
+     * @return the number of task nodes removed
+     **/
+    uint32_t removeTaskNodes(uint16_t percentage);
+
+    /**
+     * Changes costs for a percentage of the arcs.
+     * @param percentage the percentage of arcs to change cost for
+     * @return the number of arcs changed
+     **/
+    uint32_t changeArcCosts(uint16_t percentage);
+
+    /**
+     * Fix arcs with a reduced cost bigger than the threshold. Fixed arcs
+     * are removed from the graph.
+     * NOTE: If the threshold is set to a value smaller than 2*n*eps then the
+     * problem may become infeasable.
+     * @param fix_threshold the fixing threshold
+     **/
     void arcsFixing(int64_t fix_threshold);
-    void arcsUnfixing(int64_t fix_threshold);
+
+    /**
+     * Unfix arcs with a reduced cost smaller than the threshold. Unfixed arcs
+     * are added back to the graph.
+     * @param unfix_threshold the unfixing threshold
+     **/
+    void arcsUnfixing(int64_t unfix_threshold);
+
+    /**
+     * Construct a topological order of the admisible grah.
+     * @param ordered_nodes vector populated with the ordered nodes
+     * @return true if there is a valid topological order
+     **/
     bool orderTopologically(vector<uint32_t>& ordered);
+
+    /**
+     * Scales up all the costs.
+     * @param scale_up scale up factor. It is usually alpha * num_nodes.
+     * @return the value from where eps should start
+     **/
     int64_t scaleUpCosts(int64_t scale_up);
+
+    /**
+     * Scales down all the costs.
+     * @param scale_down scale down factor
+     **/
     void scaleDownCosts(int64_t scale_down);
+
+    /**
+     * Computes the maximum refine potential that can be used in a relabel
+     * operation.
+     * @param node_id the node id for which to compute the refine potential
+     * @param eps current epsilon optimality value
+     * @return the maximum refine potential value
+     **/
     int64_t get_refine_potential(uint64_t node_id, int64_t eps);
+
+    /**
+     * Resets the potential for all the nodes.
+     **/
     void resetPotentials();
+
+    /**
+     * Resets the graph. It includes reseting potential, flow and demand.
+     **/
     void resetGraph();
 
   private:
     void allocateGraphMemory(uint32_t num_nodes);
     bool visitTopologically(uint32_t node_id, vector<uint8_t>& marked,
                             list<uint32_t>& ordered);
+    void removeNodeFromFixedArcs(uint32_t node_id);
+    void removeArcs(uint32_t node_id);
+    int64_t generateArcCost();
+    uint32_t generateResourceNodeId();
+    void nodeArcsFixing(uint32_t node_id, int64_t fix_threshold);
 
     uint32_t num_nodes;
     // nodes_demand has a positive value if the node is a supply node and a
