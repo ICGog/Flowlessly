@@ -7,12 +7,13 @@
 #include <glog/logging.h>
 #include <gflags/gflags.h>
 #include <limits>
+#include <cstdio>
 
 using namespace flowlessly;
 
-DEFINE_string(graph_file, "graph.in", "Input graph file.");
-DEFINE_string(out_graph_file, "graph.out", "Output graph file.");
-DEFINE_string(algorithm, "cycle_cancelling",
+DEFINE_string(graph_file, "", "Input graph file (stdin if empty, default).");
+DEFINE_string(out_graph_file, "", "Output graph file (stdout if empty, default.");
+DEFINE_string(algorithm, "cost_scaling",
               "Algorithms to run: cycle_cancelling, bellman_ford, dijkstra, dijkstra_heap, successive_shortest_path, cost_scaling, check_flow");
 DEFINE_int64(alpha_scaling_factor, 2,
              "Value by which Eps is divided in the cost scaling algorithm");
@@ -84,7 +85,17 @@ int main(int argc, char *argv[]) {
   Statistics stats;
   Graph graph(stats);
   double read_start_time = stats.getTime();
-  graph.readGraph(FLAGS_graph_file);
+  FILE* graph_file = NULL;
+  FILE* out_graph_file = NULL;
+  if (FLAGS_graph_file.empty()) {
+    graph_file = stdin;
+  } else {
+    if ((graph_file = fopen(FLAGS_graph_file.c_str(), "r")) == NULL) {
+      LOG(ERROR) << "Failed to open graph file: " << FLAGS_graph_file;
+      return 1;
+    }
+  }
+  graph.readGraph(graph_file);
   double read_end_time = stats.getTime();
   int32_t num_iterations = 1;
   if (FLAGS_incremental) {
@@ -145,10 +156,19 @@ int main(int argc, char *argv[]) {
   }
   LOG(INFO) << "------------ Writing flow graph ------------";
   double write_start_time = stats.getTime();
-  graph.writeFlowGraph(FLAGS_out_graph_file);
+  if (FLAGS_out_graph_file.empty()) {
+    out_graph_file = stdout;
+  } else {
+     if ((out_graph_file = fopen(FLAGS_out_graph_file.c_str(), "w")) == NULL) {
+      LOG(ERROR) << "Could no open graph file for writing: " << FLAGS_out_graph_file;
+    }
+  }
+  graph.writeFlowGraph(out_graph_file);
   double write_end_time = stats.getTime();
   LOG(INFO) << "Read time: " << read_end_time - read_start_time;
   LOG(INFO) << "Write time: " << write_end_time - write_start_time;
   LOG(INFO) << "Total time: " << write_end_time - read_start_time;
+  fclose(graph_file);
+  fclose(out_graph_file);
   return 0;
 }

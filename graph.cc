@@ -21,12 +21,7 @@ namespace flowlessly {
     potential.resize(num_nodes + 1);
   }
 
-  void Graph::readGraph(const string& graph_file_path) {
-    FILE* graph_file = NULL;
-    if ((graph_file = fopen(graph_file_path.c_str(), "r")) == NULL) {
-      LOG(ERROR) << "Failed to open graph file: " << graph_file_path;
-      return;
-    }
+  void Graph::readGraph(FILE* graph_file) {
     char line[100];
     uint32_t line_num = 0;
     vector<string> vals;
@@ -70,7 +65,6 @@ namespace flowlessly {
         }
       }
     }
-    fclose(graph_file);
   }
 
   // Check if flow is valid. It does not check if the flow is the min cost flow.
@@ -147,24 +141,20 @@ namespace flowlessly {
     return true;
   }
 
-  void Graph::writeFlowGraph(const string& out_graph_file) {
+  void Graph::writeFlowGraph(FILE* out_graph_file) {
     int64_t min_cost = 0;
-    FILE *graph_file = NULL;
-    if ((graph_file = fopen(out_graph_file.c_str(), "w")) == NULL) {
-      LOG(ERROR) << "Could no open graph file for writing: " << out_graph_file;
-    }
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
       for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
            it != arcs[node_id].end(); ++it) {
         if (it->second->cap < it->second->initial_cap) {
           int32_t flow = it->second->initial_cap - it->second->cap;
-          fprintf(graph_file, "f %u %u %d\n", node_id, it->first, flow);
+          fprintf(out_graph_file, "f %u %u %d\n", node_id, it->first, flow);
           min_cost += flow * it->second->cost;
         }
       }
     }
-    fprintf(graph_file, "s %jd\n", min_cost);
-    fclose(graph_file);
+    fprintf(out_graph_file, "s %jd\n", min_cost);
+    fclose(out_graph_file);
   }
 
   void Graph::writeGraph(const string& out_graph_file) {

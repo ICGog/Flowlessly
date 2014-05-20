@@ -34,9 +34,9 @@ namespace flowlessly {
 
     /**
      * Read a graph in the DIMACS format.
-     * @param graph_file the file to read the graph from
+     * @param graph_file FD for the file to read the graph from
      **/
-    void readGraph(const string& graph_file);
+    void readGraph(FILE* graph_file);
 
     void logGraph();
 
@@ -50,7 +50,7 @@ namespace flowlessly {
      * @param out_graph_file the file to write the flow graph to
      **/
 
-    void writeFlowGraph(const string& out_graph_file);
+    void writeFlowGraph(FILE* out_graph_file);
     /**
      * Writes the graph to a file. It writes the graph in the DIMACS format.
      * @param out_graph_file the file to write the graph to
