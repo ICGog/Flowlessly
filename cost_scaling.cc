@@ -4,6 +4,7 @@
 #include "utils.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <limits>
 #include <queue>
@@ -17,6 +18,7 @@ namespace flowlessly {
                               vector<int32_t>& nodes_demand, int64_t eps) {
     statistics.update_discharge_start_time();
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
+    // Drain the supply from all the active nodes.
     while (!active_nodes.empty()) {
       uint32_t node_id = active_nodes.front();
       active_nodes.pop();
@@ -38,12 +40,16 @@ namespace flowlessly {
             }
           } else {
             has_neg_cost_arc = true;
+            // It adds the dst node to the active nodes if its demands becomes
+            // possitive as a result of the push.
             push(to_push_it->second, active_nodes, nodes_demand);
             if (to_push_it->second->cap == 0) {
               admisible_arcs[node_id].erase(to_push_it);
             }
           }
         }
+        // If a node doesn't have any outgoing negative arcs then relabel
+        // the node.
         if (!has_neg_cost_arc) {
           relabel(node_id, eps);
         }
@@ -54,12 +60,11 @@ namespace flowlessly {
 
   void CostScaling::refine(int64_t eps) {
     statistics.update_refine_start_time();
-    // Saturate arcs with negative reduced cost.
     ++refine_cnt;
     const uint32_t num_nodes = graph_.get_num_nodes() + 1;
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
     vector<int32_t>& nodes_demand = graph_.get_nodes_demand();
-    // Saturate all the arcs with negative cost.
+    // Saturate all the admisible arcs with negative cost.
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
       map<uint32_t, Arc*>::iterator end_it = admisible_arcs[node_id].end();
       for (map<uint32_t, Arc*>::iterator it = admisible_arcs[node_id].begin();
@@ -77,6 +82,7 @@ namespace flowlessly {
     if (FLAGS_global_update) {
       globalPotentialsUpdate(eps);
     }
+    // Get active nodes (i.e. nodes with demand > 0)
     queue<uint32_t> active_nodes;
     for (uint32_t node_id = 1; node_id < num_nodes; ++node_id) {
       if (nodes_demand[node_id] > 0) {
@@ -87,8 +93,14 @@ namespace flowlessly {
     statistics.update_refine_end_time();
   }
 
+  /**
+   * Apply the cost scaling algorithm. It successively makes sure that the
+   * residual graph is eps-optimal.
+   **/
   void CostScaling::costScaling() {
     const uint32_t num_nodes = graph_.get_num_nodes() + 1;
+    // Scaling factor. It is used to scale up the costs in order to avoid
+    // computations with doubles.
     const int64_t scaling_factor = FLAGS_alpha_scaling_factor * num_nodes;
     uint32_t eps_iteration_cnt = 0;
     relabel_cnt = 0;
@@ -110,6 +122,7 @@ namespace flowlessly {
         graph_.arcsFixing(2 * (num_nodes - 1) * eps);
       }
     }
+    // Change graph to initial state by unfixing arcs and scaling down costs.
     if (FLAGS_arc_fixing) {
       graph_.arcsUnfixing(numeric_limits<int64_t>::max());
     }
@@ -127,8 +140,8 @@ namespace flowlessly {
     vector<map<uint32_t, Arc*> >& arcs = graph_.get_arcs();
     // Variable used to denote an empty bucket.
     // TODO(ionel): Goldberg says that max_rank should be set to eps * n, while
-    // in Lemon is set to alpha * n. I think it should be eps * n, however, the
-    // smaller value works as well. I'm not sure why.
+    // in Lemon it is set to alpha * n. I think it should be eps * n, however,
+    // the smaller value works as well. I'm not sure why.
     uint32_t max_rank = FLAGS_alpha_scaling_factor * num_nodes;
     uint32_t bucket_end = num_nodes + 1;
     vector<uint32_t> rank(num_nodes + 1, 0);
@@ -317,13 +330,24 @@ namespace flowlessly {
     return false;
   }
 
+  /**
+   * Push supply over an arc. The arc must have an active source node and
+   * a possitive capacity.
+   *
+   * @param arc the arc on to which to drain the supply
+   * @param active_node queue of active nodes
+   * @param nodes_demand vector storing the nodes demand/supply.
+   **/
   void CostScaling::push(Arc* arc, queue<uint32_t>& active_nodes,
                          vector<int32_t>& nodes_demand) {
+    assert(nodes_demand[arc->src_node_id] > 0);
+    assert(arc->cap > 0);
     statistics.update_push_start_time();
     pushes_cnt++;
     int32_t min_flow = min(nodes_demand[arc->src_node_id], arc->cap);
     arc->cap -= min_flow;
     arc->reverse_arc->cap += min_flow;
+    // Add dst node to active nodes if the demand becomes possitive.
     if (nodes_demand[arc->dst_node_id] <= 0 &&
         nodes_demand[arc->dst_node_id] > -min_flow) {
       active_nodes.push(arc->dst_node_id);
@@ -336,26 +360,25 @@ namespace flowlessly {
   bool CostScaling::pushLookahead(Arc* arc, queue<uint32_t>& active_nodes,
                                   vector<int32_t>& nodes_demand, int64_t eps) {
     vector<map<uint32_t, Arc*> >& admisible_arcs = graph_.get_admisible_arcs();
-    if (nodes_demand[arc->dst_node_id] < 0 ||
-        admisible_arcs[arc->dst_node_id].size() > 0) {
+    uint32_t src_node = arc->src_node_id;
+    uint32_t dst_node = arc->dst_node_id;
+    if (nodes_demand[dst_node] < 0 || admisible_arcs[dst_node].size() > 0) {
       statistics.update_push_start_time();
       pushes_cnt++;
-      int32_t cur_node_demand = nodes_demand[arc->src_node_id];
-      int32_t min_flow = min(cur_node_demand, arc->cap);
+      int32_t min_flow = min(nodes_demand[src_node], arc->cap);
       arc->cap -= min_flow;
       arc->reverse_arc->cap += min_flow;
-      cur_node_demand -= min_flow;
       // If node doesn't have any excess then it will be activated.
-      if (nodes_demand[arc->dst_node_id] <= 0 &&
-          nodes_demand[arc->dst_node_id] > -min_flow) {
-        active_nodes.push(arc->dst_node_id);
+      if (nodes_demand[dst_node] <= 0 &&
+          nodes_demand[dst_node] > -min_flow) {
+        active_nodes.push(dst_node);
       }
-      nodes_demand[arc->dst_node_id] += min_flow;
-      nodes_demand[arc->src_node_id] = cur_node_demand;
+      nodes_demand[src_node] -= min_flow;
+      nodes_demand[dst_node] += min_flow;
       statistics.update_push_end_time();
       return true;
     } else {
-      relabel(arc->dst_node_id, eps);
+      relabel(dst_node, eps);
       return false;
     }
   }
@@ -397,6 +420,8 @@ namespace flowlessly {
     //    int64_t refine_pot = eps;
     for (map<uint32_t, Arc*>::iterator n_it = arcs[node_id].begin();
          n_it != arcs[node_id].end(); ++n_it) {
+      // Add arc to the admisible graph if after the potential update its
+      // reduced cost will become negative.
       if (n_it->second->cap > 0) {
         int64_t reduced_cost = n_it->second->cost + potential[node_id] -
           potential[n_it->first];
@@ -404,7 +429,8 @@ namespace flowlessly {
           admisible_arcs[node_id][n_it->first] = n_it->second;
         }
       }
-      // Check if the reverse arc is not saturated.
+      // Add reverse arc to the admisible graph if after the potential update
+      // its reduced cost will become negative.
       if (n_it->second->reverse_arc->cap > 0) {
         int64_t reduced_cost = -n_it->second->cost +
           potential[n_it->first] - potential[node_id];

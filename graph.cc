@@ -715,7 +715,9 @@ namespace flowlessly {
       fixed_arcs.clear();
     }
     for (uint32_t node_id = 1; node_id <= num_nodes; ++node_id) {
-      admisible_arcs[node_id].clear();
+      if (admisible_arcs.size() > node_id) {
+        admisible_arcs[node_id].clear();
+      }
       for (map<uint32_t, Arc*>::iterator it = arcs[node_id].begin();
            it != arcs[node_id].end(); ++it) {
         if (it->second->cap > 0 && it->second->cost < 0) {

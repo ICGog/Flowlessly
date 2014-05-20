@@ -64,6 +64,7 @@ namespace flowlessly {
         }
       }
     } while (distance[sink_node] < numeric_limits<int64_t>::max());
+    graph_.removeSinkAndSource();
   }
 
   void SuccessiveShortest::successiveShortestPathPotentials() {
@@ -111,6 +112,7 @@ namespace flowlessly {
         }
       }
     } while (distance[sink_node] < numeric_limits<int64_t>::max());
+    graph_.removeSinkAndSource();
   }
 
 }
