@@ -1,7 +1,7 @@
 CXX = g++
 LIBS = -lgflags -lglog
 CPPFLAGS =
-OPTFLAGS = -g -O4
+OPTFLAGS = -g -O3
 OBJ_DIR = .
 
 OBJS = arc.o cost_scaling.o cycle_cancelling.o graph.o statistics.o \
