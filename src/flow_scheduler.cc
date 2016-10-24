@@ -58,6 +58,8 @@ DEFINE_bool(graph_has_node_types, false, "Graph input contains node types");
 DEFINE_bool(print_assignments, false, "Only print task to PUs assignments");
 DEFINE_string(incremental_graphs, "", "File containing paths to the graphs");
 DEFINE_bool(daemon, true, "True if the solver should run as a daemon");
+DEFINE_int64(alpha_scaling_factor, 2,
+             "Value by which Eps is divided in the cost scaling algorithm");
 
 uint32_t num_solver_run = 0;
 boost::latch latch_(2);
