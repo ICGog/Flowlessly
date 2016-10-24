@@ -4,9 +4,8 @@ cmake_minimum_required(VERSION 2.8)
 
 enable_testing()
 
-set(Flowlessly_BINARY_DIR ${CMAKE_SOURCE_DIR}/build)
-set(CMAKE_MODULE_PATH ${Flowlessly_SOURCE_DIR}/cmake)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${Flowlessly_BINARY_DIR})
+# Path variable configuration
+include(cmake/Paths.cmake)
 
 # CMake libraries
 include(CheckLibraryExists)
@@ -23,6 +22,9 @@ include(CXXCompilerConfig)
 
 # External dependencies
 include(ExternalDependencies)
+
+# Doxy documentaion target
+include(DoxyTargets)
 
 # Headers use paths relative to src/
 include_directories("${CMAKE_SOURCE_DIR}/src/")
