@@ -1,8 +1,22 @@
-add_library(flowlessly_graphs graph.cc adjacency_map_graph.cc graph_generator.cc)
+file(MAKE_DIRECTORY ${Flowlessly_BINARY_DIR}/src/graphs)
 
-target_link_libraries(flowlessly_graphs glog gflags flowlessly_misc)
+set(GRAPHS_SRCS
+  graphs/adjacency_map_graph.cc
+  graphs/graph.cc
+  graphs/graph_generator.cc
+  )
 
+set(GRAPHS_TESTS
+  graphs/adjacency_map_graph_tests.cc
+)
+
+#####################################################################
 # Build tests
-add_executable(adjacency_map_graph_tests adjacency_map_graph_tests.cc)
-target_link_libraries(adjacency_map_graph_tests gflags glog ${gtest_LIBRARY} ${gtest_MAIN_LIBRARY} pthread flowlessly_misc flowlessly_graphs)
-add_test(adjacency_map_graph_tests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/adjacency_map_graph_tests)
+foreach(T IN ITEMS ${BASE_TESTS})
+  get_filename_component(TEST_NAME ${T} NAME_WE)
+  add_executable(${TEST_NAME} ${T}
+    $<TARGET_OBJECTS:graphs>)
+  target_link_libraries(${TEST_NAME}
+    ${gtest_LIBRARY} ${gtest_MAIN_LIBRARY} glog gflags pthread)
+  add_test(${TEST_NAME} ${TEST_NAME})
+endforeach(T)

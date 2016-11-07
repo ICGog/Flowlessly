@@ -1,11 +1,14 @@
+#####################################################################
 project(Flowlessly)
+#####################################################################
 
 cmake_minimum_required(VERSION 2.8)
 
-enable_testing()
-
 # Path variable configuration
 include(cmake/Paths.cmake)
+
+include_directories(${Flowlessly_SOURCE_DIR})
+include_directories(${Flowlessly_BUILD_DIR/src})
 
 # CMake libraries
 include(CheckLibraryExists)
@@ -26,11 +29,6 @@ include(ExternalDependencies)
 # Doxy documentaion target
 include(DoxyTargets)
 
-# Headers use paths relative to src/
-include_directories("${CMAKE_SOURCE_DIR}/src/")
+enable_testing()
 
-# Set subdirectories
-add_subdirectory(src)
-add_subdirectory(src/graphs)
-add_subdirectory(src/misc)
-add_subdirectory(src/solvers)
+subdirs(src)

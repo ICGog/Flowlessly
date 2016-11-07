@@ -1,12 +1,22 @@
-add_library(flowlessly_solvers cycle_cancelling.cc successive_shortest.cc)
+file(MAKE_DIRECTORY ${Flowlessly_BINARY_DIR}/src/solvers)
 
-target_link_libraries(flowlessly_solvers boost_thread boost_system flowlessly_misc flowlessly_graphs)
+set(SOLVERS_SRCS
+  solvers/cycle_cancelling.cc
+  solvers/successive_shortest.cc
+  )
 
+set(SOLVERS_TESTS
+  solvers/cycle_cancelling_tests.cc
+  solvers/successive_shortest_tests.cc
+)
+
+#####################################################################
 # Build tests
-add_executable(cycle_cancelling_tests cycle_cancelling_tests.cc)
-target_link_libraries(cycle_cancelling_tests glog gflags ${gtest_LIBRARY} ${gtest_MAIN_LIBRARY} pthread flowlessly_misc flowlessly_graphs flowlessly_solvers)
-add_test(cycle_cancelling_tests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/cycle_cancelling_tests)
-
-add_executable(successive_shortest_tests successive_shortest_tests.cc)
-target_link_libraries(successive_shortest_tests glog gflags ${gtest_LIBRARY} ${gtest_MAIN_LIBRARY} pthread flowlessly_misc flowlessly_graphs flowlessly_solvers)
-add_test(successive_shortest_tests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/successive_shortest_tests)
+foreach(T IN ITEMS ${BASE_TESTS})
+  get_filename_component(TEST_NAME ${T} NAME_WE)
+  add_executable(${TEST_NAME} ${T}
+    $<TARGET_OBJECTS:solvers>)
+  target_link_libraries(${TEST_NAME}
+    ${gtest_LIBRARY} ${gtest_MAIN_LIBRARY} glog gflags pthread)
+  add_test(${TEST_NAME} ${TEST_NAME})
+endforeach(T)

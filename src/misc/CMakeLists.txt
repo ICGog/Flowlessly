@@ -1,8 +1,21 @@
-add_library(flowlessly_misc statistics.cc utils.cc)
+file(MAKE_DIRECTORY ${Flowlessly_BINARY_DIR}/src/misc)
 
-target_link_libraries(flowlessly_misc flowlessly_graphs)
+set(MISC_SRCS
+  misc/statistics.cc
+  misc/utils.cc
+  )
 
+set(MISC_TESTS
+  misc/utils_tests.cc
+  )
+
+#####################################################################
 # Build tests
-add_executable(utils_tests utils_tests.cc)
-target_link_libraries(utils_tests glog gflags ${gtest_LIBRARY} ${gtest_MAIN_LIBRARY} pthread flowlessly_misc flowlessly_graphs)
-add_test(utils_tests ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/utils_tests)
+foreach(T IN ITEMS ${BASE_TESTS})
+  get_filename_component(TEST_NAME ${T} NAME_WE)
+  add_executable(${TEST_NAME} ${T}
+    $<TARGET_OBJECTS:misc>)
+  target_link_libraries(${TEST_NAME}
+    ${gtest_LIBRARY} ${gtest_MAIN_LIBRARY} glog gflags pthread)
+  add_test(${TEST_NAME} ${TEST_NAME})
+endforeach(T)

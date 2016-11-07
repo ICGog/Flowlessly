@@ -27,6 +27,7 @@
 #include "misc/statistics.h"
 
 DEFINE_int64(max_arc_cost, 1000, "The maximum cost of an arc");
+DEFINE_uint64(num_cores_per_machine, 8, "Number of cores per machine");
 DEFINE_uint64(max_preference_arcs, 15,
              "The maximum number of preference arcs per task");
 DEFINE_uint64(num_machines_per_rack, 20,
