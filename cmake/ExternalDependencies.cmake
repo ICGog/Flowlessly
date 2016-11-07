@@ -1,10 +1,18 @@
 ###############################################################################
+# pkg-config (which we rely on for detecting some other libraries)
+find_package(PkgConfig REQUIRED)
+
+###############################################################################
 # Boost
 find_package(Boost REQUIRED COMPONENTS chrono system thread timer)
 
 ###############################################################################
 # Google Flags
 find_package(GFlags REQUIRED)
+
+###############################################################################
+# Google Log
+find_package(GLog REQUIRED)
 
 ###############################################################################
 # Google Test
