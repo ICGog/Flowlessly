@@ -44,9 +44,9 @@
 <pre><code>
 $ git clone https://github.com/ICGog/Flowlessly.git
 $ cd Flowlessly
-$ mkdir build
+$ ./scripts/install_packages.sh
+$ make
 $ cd build
-$ cmake ..
 $ make
 $ ./flow_scheduler --algorithm=successive_shortest_path --graph_file=path_to_graph_file
 </code></pre>
