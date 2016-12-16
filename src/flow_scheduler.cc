@@ -64,20 +64,6 @@ DEFINE_int64(alpha_scaling_factor, 2,
 uint32_t num_solver_run = 0;
 boost::latch latch_(2);
 
-static bool ValidatePrintAssignments(const char* flagname,
-                                     bool print_assignments) {
-  if (print_assignments && !FLAGS_graph_has_node_types) {
-    LOG(ERROR) << "Cannot print assignments if the graph does not have "
-               << "node types.";
-    return false;
-  }
-  return true;
-}
-
-static const bool print_assignments_validator =
-  google::RegisterFlagValidator(&FLAGS_print_assignments,
-                                &ValidatePrintAssignments);
-
 inline void init(int argc, char *argv[]) {
   // Set up usage message.
   string usage("Sample usage:\nflow_scheduler --algorithm cost_scaling");
@@ -151,7 +137,6 @@ void RunSolverAlgorithm(flowlessly::Solver* solver) {
 void RunSolver(flowlessly::Solver* solver, flowlessly::Graph* graph,
                FILE* graph_file, FILE* out_graph_file,
                bool* end_of_scheduling) {
-  Statistics stats;
   ReadGraph(graph, graph_file, end_of_scheduling);
   if (*end_of_scheduling) {
     // The solver doesn't need to run because there's no more
